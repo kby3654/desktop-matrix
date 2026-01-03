@@ -1,0 +1,83 @@
+import { Button, VerticalBox, HorizontalBox, LineEdit } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    callback close_clicked();
+    // drag_window 콜백 삭제
+
+    out property <float> app_width: 1600.0;
+    out property <float> app_height: 700.0;
+
+    no-frame: true;
+    background: rgba(30, 30, 30, 0.7);
+    width: app_width * 1px;
+    height: app_height * 1px;
+
+    VerticalBox {
+        padding: 0;
+        spacing: 0;
+
+        // --- 헤더 (드래그 기능 제거, 디자인만 유지) ---
+        Rectangle {
+            height: 45px;
+            // background: rgba(45, 45, 45, 0.9);
+            
+            HorizontalLayout {
+                padding-left: 15px; padding-right: 8px;
+                alignment: space-between;
+                
+                Text {
+                    text: "Eisenhower Matrix 2026";
+                    vertical-alignment: center;
+                    color: #aaa;
+                    font-size: 14px;
+                }
+
+                Rectangle {
+                    width: 32px;
+
+                    close_btn := Rectangle {
+                        width: 28px; height: 28px; border-radius: 4px;
+                        background: close_touch.pressed ? rgba(255, 85, 85, 0.6) : close_touch.has-hover ? rgba(255, 255, 255, 0.1) : transparent;
+                        Path {
+                            width: 12px; height: 12px;
+                            stroke: close_touch.has-hover ? #ff5555 : #888;
+                            stroke-width: 2px;
+                            viewbox-width: 100; viewbox-height: 100;
+                            commands: "M 10 10 L 90 90 M 90 10 L 10 90";
+                        }
+                        close_touch := TouchArea {
+                            clicked => { root.close_clicked(); }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 메인 콘텐츠 (기존과 동일) ---
+        VerticalBox {
+            padding: 20px;
+            spacing: 15px;
+
+            GridLayout {
+                spacing: 8px;
+                Rectangle {
+                    row: 0; col: 0; background: rgba(255, 85, 85, 0.15); border-radius: 4px;
+                    VerticalBox { padding: 8px; Text { text: "DO IT"; color: #ff7777; } LineEdit { placeholder-text: "Task..."; } }
+                }
+                Rectangle {
+                    row: 0; col: 1; background: rgba(85, 255, 85, 0.15); border-radius: 4px;
+                    VerticalBox { padding: 8px; Text { text: "PLAN"; color: #77ff77; } LineEdit { placeholder-text: "Plan..."; } }
+                }
+                Rectangle {
+                    row: 1; col: 0; background: rgba(255, 255, 85, 0.15); border-radius: 4px;
+                    VerticalBox { padding: 8px; Text { text: "DELEGATE"; color: #ffff77; } LineEdit { placeholder-text: "Who?"; } }
+                }
+                Rectangle {
+                    row: 1; col: 1; background: rgba(85, 85, 255, 0.15); border-radius: 4px;
+                    VerticalBox { padding: 8px; Text { text: "DELETE"; color: #7777ff; } LineEdit { placeholder-text: "Drop..."; } }
+                }
+            }
+            Button { text: "일정 저장하기"; height: 40px; }
+        }
+    }
+}

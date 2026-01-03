@@ -1,0 +1,31 @@
+[package]
+name = "wallpaper-metrics"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+slint = { version = "1.14.1", features = ["raw-window-handle-06", "compat-1-2"] }
+raw-window-handle = "0.6"
+tray-icon = "0.21.2"
+image = "0.25"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",      # 추가: 작업표시줄 제어용
+    "Win32_System_Com",    # 추가: COM 인터페이스용
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_HiDpi",
+] }
+
+[build-dependencies]
+slint-build = "1.14.1"
+
+[profile.release]
+opt-level = "s"     # 코드 크기 최적화 (s 또는 z)
+lto = true          # Link Time Optimization (전체 코드 최적화)
+codegen-units = 1   # 컴파일 유닛을 1로 제한하여 최적화 극대화
+panic = "abort"     # 패닉 발생 시 스택 추적 제거 (용량/메모리 절약)
+strip = true        # 불필요한 데이터(심볼) 제거
