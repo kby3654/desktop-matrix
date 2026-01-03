@@ -1,18 +1,20 @@
-import { Button, VerticalBox, HorizontalBox, LineEdit } from "std-widgets.slint";
+import {
+    Button,
+    VerticalBox,
+    HorizontalBox,
+    LineEdit,
+} from "std-widgets.slint";
 
+// 플러스 버튼 컴포넌트
 component BtnPlus inherits Rectangle {
     callback clicked;
     in property <color> theme-color: #000;
-    
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    // 배경색: 클릭 시 -> 호버 시 -> 기본(투명)
     background: touch.pressed ? rgba(0, 0, 0, 0.2) : touch.has-hover ? rgba(0, 0, 0, 0.1) : transparent;
     border-width: 1px;
     border-color: touch.has-hover ? root.theme-color : transparent;
-
-    // + 아이콘 그리기
     Path {
         width: 16px;
         height: 16px;
@@ -20,48 +22,63 @@ component BtnPlus inherits Rectangle {
         stroke-width: 3px;
         viewbox-width: 100;
         viewbox-height: 100;
-        // 세로선(M 50 0 L 50 100)과 가로선(M 0 50 L 100 50)
         commands: "M 50 0 L 50 100 M 0 50 L 100 50";
-        
-        animate stroke { duration: 150ms; }
     }
 
     touch := TouchArea {
-        clicked => { root.clicked(); }
+        clicked => {
+            root.clicked();
+        }
     }
 }
-// 항목 추가를 위한 다이얼로그
-component InputDialog inherits Window {
+
+// InputDialog 수정 (Window 상속 제거)
+component InputContent inherits Rectangle {
     callback confirmed(string);
     callback cancelled();
-    
     in property <string> dialog_title: "";
     in property <string> placeholder: "";
-    
-    width: 400px;
-    height: 200px;
+    width: 350px;
+    height: 180px;
     background: #2D2D2D;
-    
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: #444;
     VerticalBox {
-        padding: 20px;
-        spacing: 15px;
-        
+        padding: 15px;
+        spacing: 12px;
         Text {
             text: root.dialog_title;
             color: #fff;
             font-size: 16px;
             font-weight: 700;
         }
-        
+
         input_field := LineEdit {
             placeholder-text: root.placeholder;
+            // 엔터 키 대응
+            accepted => {
+                root.confirmed(self.text);
+            }
         }
-        
+
         HorizontalBox {
             spacing: 10px;
             alignment: end;
-            Button { text: "취소"; clicked => { root.cancelled(); } }
-            Button { text: "확인"; primary: true; clicked => { root.confirmed(input_field.text); } }
+            Button {
+                text: "취소";
+                clicked => {
+                    root.cancelled();
+                }
+            }
+
+            Button {
+                text: "확인";
+                primary: true;
+                clicked => {
+                    root.confirmed(input_field.text);
+                }
+            }
         }
     }
 }
@@ -73,23 +90,14 @@ export component AppWindow inherits Window {
     callback add_delegate_item(string);
     callback add_delete_item(string);
     callback dialog_shown();
-    callback position_dialog(int, float, float); // dialog_type, x, y
-
     in property <float> app_width: 800.0;
     in property <float> app_height: 850.0;
-    
-    private property <bool> show_doit_dialog: false;
-    private property <bool> show_plan_dialog: false;
-    private property <bool> show_delegate_dialog: false;
-    private property <bool> show_delete_dialog: false;
-    
     in-out property <[string]> doit_items: [];
     in-out property <[string]> plan_items: [];
     in-out property <[string]> delegate_items: [];
     in-out property <[string]> delete_items: [];
-
     no-frame: true;
-    background: transparent; // 바닥에 깔리므로 투명하게 설정 가능
+    background: transparent;
     width: app_width * 1px;
     height: app_height * 1px;
 
@@ -97,205 +105,247 @@ export component AppWindow inherits Window {
         padding: 0;
         spacing: 0;
 
-        // 상단 헤더 (투명하게 유지)
+        // 상단 헤더
         Rectangle {
-            height: 40px;
+            height: 45px;
             HorizontalLayout {
-                padding-left: 20px; padding-right: 10px;
+                padding-left: 15px;
+                padding-right: 8px;
                 alignment: space-between;
-                Text { text: "MY EISENHOWER MATRIX"; color: #555; font-size: 12px; font-weight: 800; vertical-alignment: center; }
+                Text {
+                    text: "MY EISENHOWER MATRIX";
+                    color: #aaa;
+                    font-size: 14px;
+                    vertical-alignment: center;
+                }
+
                 close_touch := TouchArea {
-                    width: 30px;
-                    clicked => { root.close_clicked(); }
+                    width: 32px;
+                    clicked => {
+                        root.close_clicked();
+                    }
                     Rectangle {
-                        width: 20px; height: 20px;
-                        Text { text: "×"; color: close_touch.has-hover ? #ff5555 : #888; font-size: 20px; }
+                        Text {
+                            text: "×";
+                            color: close_touch.has-hover ? #ff5555 : #888;
+                            font-size: 24px;
+                        }
                     }
                 }
             }
         }
 
-        // 중앙 메인 영역
-        VerticalBox {
-            padding: 30px;
-            alignment: center;
-
-            // 2x2 매트릭스 본체
-            GridLayout {
-                    spacing: 0;
-                    
-                    // Q1: 중요하고 긴급한 일 (빨강)
-                    Rectangle {
-                        row: 0; col: 0; background: #F17D7D; border-width: 2px; border-color: #000;
-                        min-height: (root.app_height - 100) / 2 * 1px;
-                        VerticalBox {
-                            padding: 5px; alignment: start; spacing: 5px;
-                            
-                            // 헤더 영역
-                            HorizontalBox {
-                                alignment: space-between;
-                                Text { 
-                                    text: "중요하고 긴급한 일"; 
-                                    font-size: 20px; 
-                                    font-weight: 900; 
-                                    color: #000; 
-                                }
-                                doit_btn := BtnPlus {
-                                    theme-color: #000;
-                                    clicked => { 
-                                        root.show_doit_dialog = true;
-                                        // 버튼 위치 계산: 그리드 셀 내부에서 + 버튼의 위치
-                                        // 셀 너비의 오른쪽 끝 - 버튼 너비, 헤더 높이
-                                        let cell_width = (root.app_width - 60) / 2; // padding 30px * 2 제외
-                                        let btn_x = cell_width - 32 - 5; // 오른쪽에서 5px 여백
-                                        let btn_y = 5 + 40; // padding + 헤더 높이
-                                        root.position_dialog(0, btn_x, btn_y);
-                                    } 
-                                }
+        // 메인 매트릭스
+        GridLayout {
+            spacing: 0;
+            
+            // --- Q1: DO IT ---
+            Rectangle {
+                row: 0;
+                col: 0;
+                background: #F17D7D;
+                border-width: 2px;
+                border-color: #000;
+                min-height: (root.app_height - 100) / 2 * 1px;
+                VerticalBox {
+                    padding: 15px;
+                    alignment: start;
+                    HorizontalBox {
+                        alignment: space-between;
+                        Text {
+                            text: "중요하고 긴급한 일";
+                            font-size: 20px;
+                            font-weight: 900;
+                            color: #000;
+                        }
+                        
+                        // 버튼 및 팝업
+                        doit_btn := BtnPlus {
+                            theme-color: #000;
+                            clicked => {
+                                doit_popup.show();
+                                root.dialog_shown(); // Rust로 신호를 보냄
                             }
-                            
-                            // 리스트 출력 영역
-                            VerticalBox {
-                                spacing: 5px;
-                                for item in root.doit_items: Text { text: "• " + item; color: #000; font-size: 16px; }
+                        }
+
+                        doit_popup := PopupWindow {
+                            x: ((root.app_width / 2) * 1px) - 320px; // 버튼 왼쪽으로 팝업 배치 (창 크기에 맞춰 조절)
+                            y: doit_btn.height + 10px;
+                            InputContent {
+                                dialog_title: "중요/긴급 항목 추가";
+                                confirmed(t) => {
+                                    root.add_doit_item(t);
+                                    doit_popup.close();
+                                }
+                                cancelled => {
+                                    doit_popup.close();
+                                }
                             }
                         }
                     }
 
-                    // Q2: 중요하지만 긴급하지 않은 일 (초록)
-                    Rectangle {
-                        row: 0; col: 1; background: #8CC684; border-width: 2px; border-color: #000;
-                        min-height: (root.app_height - 100) / 2 * 1px;
-                        VerticalBox {
-                            padding: 5px; alignment: start; spacing: 5px;
-                            
-                            // 헤더 영역
-                            HorizontalBox {
-                                alignment: space-between;
-                                Text { 
-                                    text: "중요하지만 긴급하지 않은 일"; 
-                                    font-size: 20px; 
-                                    font-weight: 900; 
-                                    color: #000; 
-                                }
-                                plan_btn := BtnPlus {
-                                    theme-color: #000;
-                                    clicked => { 
-                                        root.show_plan_dialog = true;
-                                        // Q2: 오른쪽 상단 셀
-                                        let cell_width = (root.app_width - 60) / 2;
-                                        let cell_x = cell_width; // 두 번째 열 시작 위치
-                                        let btn_x = cell_x + cell_width - 32 - 5;
-                                        let btn_y = 5 + 40;
-                                        root.position_dialog(1, btn_x, btn_y);
-                                    } 
-                                }
-                            }
-                            
-                            VerticalBox {
-                                spacing: 5px;
-                                for item in root.plan_items: Text { text: "• " + item; color: #000; font-size: 16px; }
-                            }
-                        }
-                    }
-
-                    // Q3: 긴급하지만 중요하지 않은 일 (노랑)
-                    Rectangle {
-                        row: 1; col: 0; background: #FFD065; border-width: 2px; border-color: #000;
-                        min-height: (root.app_height - 100) / 2 * 1px;
-                        VerticalBox {
-                            padding: 5px; alignment: start; spacing: 5px;
-                            
-                            // 헤더 영역
-                            HorizontalBox {
-                                alignment: space-between;
-                                Text { 
-                                    text: "긴급하지만 중요하지 않은 일"; 
-                                    font-size: 20px; 
-                                    font-weight: 900; 
-                                    color: #000; 
-                                }
-                                delegate_btn := BtnPlus {
-                                    theme-color: #000;
-                                    clicked => { 
-                                        root.show_delegate_dialog = true;
-                                        // Q3: 왼쪽 하단 셀
-                                        let cell_width = (root.app_width - 60) / 2;
-                                        let cell_height = (root.app_height - 100) / 2;
-                                        let btn_x = cell_width - 32 - 5;
-                                        let btn_y = 40 + 30 + cell_height + 5 + 40; // 헤더 + padding + 첫 번째 행 높이 + padding + 헤더 높이
-                                        root.position_dialog(2, btn_x, btn_y);
-                                    } 
-                                }
-                            }
-                            
-                            VerticalBox {
-                                spacing: 5px;
-                                for item in root.delegate_items: Text { text: "• " + item; color: #000; font-size: 16px; }
-                            }
-                        }
-                    }
-
-                    // Q4: 중요하지도, 긴급하지도 않은 일 (회색)
-                    Rectangle {
-                        row: 1; col: 1; background: #D9D9D9; border-width: 2px; border-color: #000;
-                        min-height: (root.app_height - 100) / 2 * 1px;
-                        VerticalBox {
-                            padding: 5px; alignment: start; spacing: 5px;
-                            
-                            // 헤더 영역
-                            HorizontalBox {
-                                alignment: space-between;
-                                Text { 
-                                    text: "중요하지도 긴급하지도 않은 일"; 
-                                    font-size: 20px; 
-                                    font-weight: 900; 
-                                    color: #000; 
-                                }
-                                delete_btn := BtnPlus {
-                                    theme-color: #000;
-                                    clicked => { 
-                                        root.show_delete_dialog = true;
-                                        // Q4: 오른쪽 하단 셀
-                                        let cell_width = (root.app_width - 60) / 2;
-                                        let cell_height = (root.app_height - 100) / 2;
-                                        let cell_x = cell_width;
-                                        let btn_x = cell_x + cell_width - 32 - 5;
-                                        let btn_y = 40 + 30 + cell_height + 5 + 40;
-                                        root.position_dialog(3, btn_x, btn_y);
-                                    } 
-                                }
-                            }
-                            
-                            VerticalBox {
-                                spacing: 5px;
-                                for item in root.delete_items: Text { text: "• " + item; color: #000; font-size: 16px; }
-                            }
-                        }
+                    for item in root.doit_items: Text {
+                        text: "• " + item;
+                        color: #000;
+                        font-size: 16px;
                     }
                 }
-        }
-    }
+            }
 
-    // 다이얼로그 팝업 (가장 위에 띄움)
-    if show_doit_dialog: InputDialog {
-        dialog_title: "중요/긴급 항목 추가";
-        confirmed(t) => { root.add_doit_item(t); root.show_doit_dialog = false; }
-        cancelled => { root.show_doit_dialog = false; }
-    }
-    if show_plan_dialog: InputDialog {
-        dialog_title: "중요/안긴급 항목 추가";
-        confirmed(t) => { root.add_plan_item(t); root.show_plan_dialog = false; }
-        cancelled => { root.show_plan_dialog = false; }
-    }
-    if show_delegate_dialog: InputDialog {
-        dialog_title: "안중요/긴급 항목 추가";
-        confirmed(t) => { root.add_delegate_item(t); root.show_delegate_dialog = false; }
-        cancelled => { root.show_delegate_dialog = false; }
-    }
-    if show_delete_dialog: InputDialog {
-        dialog_title: "안중요/안긴급 항목 추가";
-        confirmed(t) => { root.add_delete_item(t); root.show_delete_dialog = false; }
-        cancelled => { root.show_delete_dialog = false; }
+            // --- Q2: PLAN ---
+            Rectangle {
+                row: 0;
+                col: 1;
+                background: #8CC684;
+                border-width: 2px;
+                border-color: #000;
+                min-height: (root.app_height - 100) / 2 * 1px;
+                VerticalBox {
+                    padding: 15px;
+                    alignment: start;
+                    HorizontalBox {
+                        alignment: space-between;
+                        Text {
+                            text: "중요하지만 안긴급";
+                            font-size: 20px;
+                            font-weight: 900;
+                            color: #000;
+                        }
+
+                        plan_btn := BtnPlus {
+                            theme-color: #000;
+                            clicked => {
+                                plan_popup.show();
+                                root.dialog_shown(); // Rust로 신호를 보냄
+                            }
+                        }
+
+                        plan_popup := PopupWindow {
+                            x: ((root.app_width / 2) * 1px) - 320px;
+                            y: plan_btn.height + 10px;
+                            InputContent {
+                                dialog_title: "계획 항목 추가";
+                                confirmed(t) => {
+                                    root.add_plan_item(t);
+                                    plan_popup.close();
+                                }
+                                cancelled => {
+                                    plan_popup.close();
+                                }
+                            }
+                        }
+                    }
+
+                    for item in root.plan_items: Text {
+                        text: "• " + item;
+                        color: #000;
+                        font-size: 16px;
+                    }
+                }
+            }
+
+            // --- Q3: DELEGATE ---
+            Rectangle {
+                row: 1;
+                col: 0;
+                background: #FFD065;
+                border-width: 2px;
+                border-color: #000;
+                min-height: (root.app_height - 100) / 2 * 1px;
+                VerticalBox {
+                    padding: 15px;
+                    alignment: start;
+                    HorizontalBox {
+                        alignment: space-between;
+                        Text {
+                            text: "긴급하지만 안중요";
+                            font-size: 20px;
+                            font-weight: 900;
+                            color: #000;
+                        }
+
+                        delegate_btn := BtnPlus {
+                            theme-color: #000;
+                            clicked => {
+                                delegate_popup.show();
+                                root.dialog_shown(); // Rust로 신호를 보냄
+                            }
+                        }
+
+                        delegate_popup := PopupWindow {
+                            x: ((root.app_width / 2) * 1px) - 320px;
+                            y: delegate_btn.height + 10px;
+                            InputContent {
+                                dialog_title: "위임 항목 추가";
+                                confirmed(t) => {
+                                    root.add_delegate_item(t);
+                                    delegate_popup.close();
+                                }
+                                cancelled => {
+                                    delegate_popup.close();
+                                }
+                            }
+                        }
+                    }
+
+                    for item in root.delegate_items: Text {
+                        text: "• " + item;
+                        color: #000;
+                        font-size: 16px;
+                    }
+                }
+            }
+
+            // --- Q4: DELETE ---
+            Rectangle {
+                row: 1;
+                col: 1;
+                background: #D9D9D9;
+                border-width: 2px;
+                border-color: #000;
+                VerticalBox {
+                    padding: 15px;
+                    alignment: start;
+                    HorizontalBox {
+                        alignment: space-between;
+                        Text {
+                            text: "안중요하고 안긴급";
+                            font-size: 20px;
+                            font-weight: 900;
+                            color: #000;
+                        }
+
+                        delete_btn := BtnPlus {
+                            theme-color: #000;
+                            clicked => {
+                                delete_popup.show();
+                                root.dialog_shown(); // Rust로 신호를 보냄
+                            }
+                        }
+
+                        delete_popup := PopupWindow {
+                            x: ((root.app_width / 2) * 1px) - 320px;
+                            y: delete_btn.height + 10px;
+                            InputContent {
+                                dialog_title: "삭제 항목 추가";
+                                confirmed(t) => {
+                                    root.add_delete_item(t);
+                                    delete_popup.close();
+                                }
+                                cancelled => {
+                                    delete_popup.close();
+                                }
+                            }
+                        }
+                    }
+
+                    for item in root.delete_items: Text {
+                        text: "• " + item;
+                        color: #000;
+                        font-size: 16px;
+                    }
+                }
+            }
+        }
     }
 }

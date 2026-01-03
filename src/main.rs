@@ -97,6 +97,8 @@ fn main() -> Result<(), slint::PlatformError> {
     let menu_channel = MenuEvent::receiver();
     
     // 타이머를 변수에 할당하여 생명주기를 유지
+    // **비차단 방식(`try_recv`):** "신호가 왔으면 처리하고, 없으면 즉시 넘어가는" 방식
+    // 0.1초에 한 번씩 아주 짧게 체크하고 바로 쉬기 때문에 CPU 점유율은 사실상 **0%**에 가까워 메모리에 부담을 주지 않음
     let tray_timer = slint::Timer::default();
     tray_timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), move || {
         while let Ok(event) = menu_channel.try_recv() {
