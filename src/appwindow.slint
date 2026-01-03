@@ -1,11 +1,76 @@
 import { Button, VerticalBox, HorizontalBox, LineEdit } from "std-widgets.slint";
 
+component InputDialog inherits Window {
+    callback confirmed(string);
+    callback cancelled();
+    
+    in property <string> dialog_title: "";
+    in property <string> placeholder: "";
+    
+    width: 400px;
+    height: 200px;
+    background: rgba(40, 40, 40, 0.95);
+    
+    VerticalBox {
+        padding: 20px;
+        spacing: 15px;
+        
+        Text {
+            text: root.dialog_title;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        input_field := LineEdit {
+            placeholder-text: root.placeholder;
+            font-size: 14px;
+        }
+        
+        HorizontalBox {
+            spacing: 10px;
+            alignment: end;
+            
+            Button {
+                text: "취소";
+                min-width: 80px;
+                clicked => { root.cancelled(); }
+            }
+            
+            Button {
+                text: "확인";
+                min-width: 80px;
+                clicked => { 
+                    root.confirmed(input_field.text); 
+                }
+            }
+        }
+    }
+}
+
 export component AppWindow inherits Window {
     callback close_clicked();
+    callback add_doit_item(string);
+    callback add_plan_item(string);
+    callback add_delegate_item(string);
+    callback add_delete_item(string);
+    callback dialog_shown();
     // drag_window 콜백 삭제
 
-    out property <float> app_width: 1600.0;
-    out property <float> app_height: 700.0;
+    in property <float> app_width: 1600.0;
+    in property <float> app_height: 700.0;
+    
+    // 각 그리드의 입력 다이얼로그 표시 상태
+    private property <bool> show_doit_dialog: false;
+    private property <bool> show_plan_dialog: false;
+    private property <bool> show_delegate_dialog: false;
+    private property <bool> show_delete_dialog: false;
+    
+    // 각 그리드의 입력된 텍스트 목록
+    in-out property <[string]> doit_items: [];
+    in-out property <[string]> plan_items: [];
+    in-out property <[string]> delegate_items: [];
+    in-out property <[string]> delete_items: [];
 
     no-frame: true;
     background: rgba(30, 30, 30, 0.7);
@@ -60,22 +125,251 @@ export component AppWindow inherits Window {
 
             GridLayout {
                 spacing: 8px;
+                
+                // DO IT 그리드
                 Rectangle {
                     row: 0; col: 0; background: rgba(255, 85, 85, 0.15); border-radius: 4px;
-                    VerticalBox { padding: 8px; Text { text: "DO IT"; color: #ff7777; } LineEdit { placeholder-text: "Task..."; } }
+                    width: ((root.app_width - 48) * 1px) / 2;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 8px;
+                        
+                        HorizontalBox {
+                            alignment: space-between;
+                            Text { text: "DO IT"; color: #ff7777; vertical-alignment: center; }
+                            add_doit_btn := Rectangle {
+                                width: 24px; height: 24px; border-radius: 4px;
+                                background: add_doit_touch.pressed ? rgba(255, 85, 85, 0.4) : add_doit_touch.has-hover ? rgba(255, 85, 85, 0.3) : rgba(255, 85, 85, 0.2);
+                                Path {
+                                    width: 12px; height: 12px;
+                                    stroke: #ff7777;
+                                    stroke-width: 2px;
+                                    viewbox-width: 100; viewbox-height: 100;
+                                    commands: "M 50 20 L 50 80 M 20 50 L 80 50";
+                                }
+                                add_doit_touch := TouchArea {
+                                    clicked => { 
+                                        root.show_doit_dialog = true;
+                                        root.dialog_shown();
+                                    }
+                                }
+                            }
+                        }
+                        
+                        doit_list := VerticalBox {
+                            spacing: 4px;
+                            for item in root.doit_items: Rectangle {
+                                height: 30px;
+                                background: rgba(255, 85, 85, 0.1);
+                                border-radius: 2px;
+                                HorizontalBox {
+                                    padding-left: 8px;
+                                    Text {
+                                        text: item;
+                                        color: #ffaaaa;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+                
+                // PLAN 그리드
                 Rectangle {
                     row: 0; col: 1; background: rgba(85, 255, 85, 0.15); border-radius: 4px;
-                    VerticalBox { padding: 8px; Text { text: "PLAN"; color: #77ff77; } LineEdit { placeholder-text: "Plan..."; } }
+                    width: ((root.app_width - 48) * 1px) / 2;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 8px;
+                        
+                        HorizontalBox {
+                            alignment: space-between;
+                            Text { text: "PLAN"; color: #77ff77; vertical-alignment: center; }
+                            add_plan_btn := Rectangle {
+                                width: 24px; height: 24px; border-radius: 4px;
+                                background: add_plan_touch.pressed ? rgba(85, 255, 85, 0.4) : add_plan_touch.has-hover ? rgba(85, 255, 85, 0.3) : rgba(85, 255, 85, 0.2);
+                                Path {
+                                    width: 12px; height: 12px;
+                                    stroke: #77ff77;
+                                    stroke-width: 2px;
+                                    viewbox-width: 100; viewbox-height: 100;
+                                    commands: "M 50 20 L 50 80 M 20 50 L 80 50";
+                                }
+                                add_plan_touch := TouchArea {
+                                    clicked => { 
+                                        root.show_plan_dialog = true;
+                                        root.dialog_shown();
+                                    }
+                                }
+                            }
+                        }
+                        
+                        plan_list := VerticalBox {
+                            spacing: 4px;
+                            for item in root.plan_items: Rectangle {
+                                height: 30px;
+                                background: rgba(85, 255, 85, 0.1);
+                                border-radius: 2px;
+                                HorizontalBox {
+                                    padding-left: 8px;
+                                    Text {
+                                        text: item;
+                                        color: #aaffaa;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+                
+                // DELEGATE 그리드
                 Rectangle {
                     row: 1; col: 0; background: rgba(255, 255, 85, 0.15); border-radius: 4px;
-                    VerticalBox { padding: 8px; Text { text: "DELEGATE"; color: #ffff77; } LineEdit { placeholder-text: "Who?"; } }
+                    width: ((root.app_width - 48) * 1px) / 2;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 8px;
+                        
+                        HorizontalBox {
+                            alignment: space-between;
+                            Text { text: "DELEGATE"; color: #ffff77; vertical-alignment: center; }
+                            add_delegate_btn := Rectangle {
+                                width: 24px; height: 24px; border-radius: 4px;
+                                background: add_delegate_touch.pressed ? rgba(255, 255, 85, 0.4) : add_delegate_touch.has-hover ? rgba(255, 255, 85, 0.3) : rgba(255, 255, 85, 0.2);
+                                Path {
+                                    width: 12px; height: 12px;
+                                    stroke: #ffff77;
+                                    stroke-width: 2px;
+                                    viewbox-width: 100; viewbox-height: 100;
+                                    commands: "M 50 20 L 50 80 M 20 50 L 80 50";
+                                }
+                                add_delegate_touch := TouchArea {
+                                    clicked => { 
+                                        root.show_delegate_dialog = true;
+                                        root.dialog_shown();
+                                    }
+                                }
+                            }
+                        }
+                        
+                        delegate_list := VerticalBox {
+                            spacing: 4px;
+                            for item in root.delegate_items: Rectangle {
+                                height: 30px;
+                                background: rgba(255, 255, 85, 0.1);
+                                border-radius: 2px;
+                                HorizontalBox {
+                                    padding-left: 8px;
+                                    Text {
+                                        text: item;
+                                        color: #ffffaa;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+                
+                // DELETE 그리드
                 Rectangle {
                     row: 1; col: 1; background: rgba(85, 85, 255, 0.15); border-radius: 4px;
-                    VerticalBox { padding: 8px; Text { text: "DELETE"; color: #7777ff; } LineEdit { placeholder-text: "Drop..."; } }
+                    width: ((root.app_width - 48) * 1px) / 2;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 8px;
+                        
+                        HorizontalBox {
+                            alignment: space-between;
+                            Text { text: "DELETE"; color: #7777ff; vertical-alignment: center; }
+                            add_delete_btn := Rectangle {
+                                width: 24px; height: 24px; border-radius: 4px;
+                                background: add_delete_touch.pressed ? rgba(85, 85, 255, 0.4) : add_delete_touch.has-hover ? rgba(85, 85, 255, 0.3) : rgba(85, 85, 255, 0.2);
+                                Path {
+                                    width: 12px; height: 12px;
+                                    stroke: #7777ff;
+                                    stroke-width: 2px;
+                                    viewbox-width: 100; viewbox-height: 100;
+                                    commands: "M 50 20 L 50 80 M 20 50 L 80 50";
+                                }
+                                add_delete_touch := TouchArea {
+                                    clicked => { 
+                                        root.show_delete_dialog = true;
+                                        root.dialog_shown();
+                                    }
+                                }
+                            }
+                        }
+                        
+                        delete_list := VerticalBox {
+                            spacing: 4px;
+                            for item in root.delete_items: Rectangle {
+                                height: 30px;
+                                background: rgba(85, 85, 255, 0.1);
+                                border-radius: 2px;
+                                HorizontalBox {
+                                    padding-left: 8px;
+                                    Text {
+                                        text: item;
+                                        color: #aaaaff;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+            
+            // 입력 다이얼로그들
+            doit_dialog := InputDialog {
+                visible: root.show_doit_dialog;
+                dialog_title: "DO IT 항목 추가";
+                placeholder: "할 일을 입력하세요...";
+                confirmed(text) => {
+                    root.add_doit_item(text);
+                    root.show_doit_dialog = false;
+                }
+                cancelled => { root.show_doit_dialog = false; }
+            }
+            
+            plan_dialog := InputDialog {
+                visible: root.show_plan_dialog;
+                dialog_title: "PLAN 항목 추가";
+                placeholder: "계획을 입력하세요...";
+                confirmed(text) => {
+                    root.add_plan_item(text);
+                    root.show_plan_dialog = false;
+                }
+                cancelled => { root.show_plan_dialog = false; }
+            }
+            
+            delegate_dialog := InputDialog {
+                visible: root.show_delegate_dialog;
+                dialog_title: "DELEGATE 항목 추가";
+                placeholder: "위임할 사람을 입력하세요...";
+                confirmed(text) => {
+                    root.add_delegate_item(text);
+                    root.show_delegate_dialog = false;
+                }
+                cancelled => { root.show_delegate_dialog = false; }
+            }
+            
+            delete_dialog := InputDialog {
+                visible: root.show_delete_dialog;
+                dialog_title: "DELETE 항목 추가";
+                placeholder: "삭제할 항목을 입력하세요...";
+                confirmed(text) => {
+                    root.add_delete_item(text);
+                    root.show_delete_dialog = false;
+                }
+                cancelled => { root.show_delete_dialog = false; }
             }
             Button { text: "일정 저장하기"; height: 40px; }
         }
