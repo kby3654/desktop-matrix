@@ -44,7 +44,7 @@ fn make_window_truly_invisible_on_taskbar(window: &slint::Window) {
                 ex_style |= WS_EX_TOOLWINDOW.0 as i32;
                 
                 // [추가] WS_EX_NOACTIVATE: 클릭해도 이 창이 활성화(앞으로 오기)되지 않음
-                ex_style |= WS_EX_NOACTIVATE.0 as i32; 
+                // ex_style |= WS_EX_NOACTIVATE.0 as i32; 
                 
                 let _ = SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style);
 
