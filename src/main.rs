@@ -9,12 +9,19 @@ use std::fs;
 use slint::{Model, ModelRc};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct EisenhowerItem {
+    checked: bool,
+    text: String,
+    index: usize,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct EisenhowerData {
-    doit_items: Vec<String>,
-    plan_items: Vec<String>,
-    delegate_items: Vec<String>,
-    delete_items: Vec<String>,
+    doit_items: Vec<EisenhowerItem>,
+    plan_items: Vec<EisenhowerItem>,
+    delegate_items: Vec<EisenhowerItem>,
+    delete_items: Vec<EisenhowerItem>,
 }
 
 fn get_json_path() -> std::path::PathBuf {
@@ -28,13 +35,37 @@ fn get_json_path() -> std::path::PathBuf {
         .unwrap_or_else(|| std::path::PathBuf::from("data.json"))
 }
 
-fn save_to_json(doit_items: &[slint::SharedString], plan_items: &[slint::SharedString], 
-                delegate_items: &[slint::SharedString], delete_items: &[slint::SharedString]) {
+fn save_to_json(doit_items: &[(bool, slint::SharedString)], plan_items: &[(bool, slint::SharedString)], 
+                delegate_items: &[(bool, slint::SharedString)], delete_items: &[(bool, slint::SharedString)]) {
     let data = EisenhowerData {
-        doit_items: doit_items.iter().map(|s| s.to_string()).collect(),
-        plan_items: plan_items.iter().map(|s| s.to_string()).collect(),
-        delegate_items: delegate_items.iter().map(|s| s.to_string()).collect(),
-        delete_items: delete_items.iter().map(|s| s.to_string()).collect(),
+        doit_items: doit_items.iter().enumerate()
+            .map(|(idx, (checked, text))| EisenhowerItem {
+                checked: *checked,
+                text: text.to_string(),
+                index: idx,
+            })
+            .collect(),
+        plan_items: plan_items.iter().enumerate()
+            .map(|(idx, (checked, text))| EisenhowerItem {
+                checked: *checked,
+                text: text.to_string(),
+                index: idx,
+            })
+            .collect(),
+        delegate_items: delegate_items.iter().enumerate()
+            .map(|(idx, (checked, text))| EisenhowerItem {
+                checked: *checked,
+                text: text.to_string(),
+                index: idx,
+            })
+            .collect(),
+        delete_items: delete_items.iter().enumerate()
+            .map(|(idx, (checked, text))| EisenhowerItem {
+                checked: *checked,
+                text: text.to_string(),
+                index: idx,
+            })
+            .collect(),
     };
     
     let json_path = get_json_path();
@@ -45,6 +76,18 @@ fn save_to_json(doit_items: &[slint::SharedString], plan_items: &[slint::SharedS
     }
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum EisenhowerDataCompat {
+    New(EisenhowerData),
+    Old {
+        doit_items: Vec<String>,
+        plan_items: Vec<String>,
+        delegate_items: Vec<String>,
+        delete_items: Vec<String>,
+    },
+}
+
 fn load_from_json() -> Option<EisenhowerData> {
     let json_path = get_json_path();
     if !json_path.exists() {
@@ -53,8 +96,25 @@ fn load_from_json() -> Option<EisenhowerData> {
     
     match fs::read_to_string(&json_path) {
         Ok(content) => {
-            match serde_json::from_str::<EisenhowerData>(&content) {
-                Ok(data) => Some(data),
+            match serde_json::from_str::<EisenhowerDataCompat>(&content) {
+                Ok(EisenhowerDataCompat::New(data)) => Some(data),
+                Ok(EisenhowerDataCompat::Old { doit_items, plan_items, delegate_items, delete_items }) => {
+                    // 기존 형식(문자열 배열)을 새 형식으로 변환
+                    Some(EisenhowerData {
+                        doit_items: doit_items.into_iter().enumerate()
+                            .map(|(idx, text)| EisenhowerItem { checked: false, text, index: idx })
+                            .collect(),
+                        plan_items: plan_items.into_iter().enumerate()
+                            .map(|(idx, text)| EisenhowerItem { checked: false, text, index: idx })
+                            .collect(),
+                        delegate_items: delegate_items.into_iter().enumerate()
+                            .map(|(idx, text)| EisenhowerItem { checked: false, text, index: idx })
+                            .collect(),
+                        delete_items: delete_items.into_iter().enumerate()
+                            .map(|(idx, text)| EisenhowerItem { checked: false, text, index: idx })
+                            .collect(),
+                    })
+                }
                 Err(e) => {
                     eprintln!("JSON 파싱 실패: {}", e);
                     None
@@ -69,22 +129,38 @@ fn load_from_json() -> Option<EisenhowerData> {
 }
 
 fn save_ui_to_json(ui: &AppWindow) {
-    // 빈 문자열 아이템은 필터링하여 저장
-    let doit_items: Vec<slint::SharedString> = (0..ui.get_doit_items().row_count())
-        .map(|i| ui.get_doit_items().row_data(i).unwrap())
-        .filter(|s| !s.trim().is_empty())
+    // 체크 상태와 텍스트를 함께 수집
+    let doit_items: Vec<(bool, slint::SharedString)> = (0..ui.get_doit_items().row_count())
+        .map(|i| {
+            let text = ui.get_doit_items().row_data(i).unwrap();
+            let checked = ui.get_doit_checked().row_data(i).unwrap_or(false);
+            (checked, text)
+        })
+        .filter(|(_, text)| !text.trim().is_empty())
         .collect();
-    let plan_items: Vec<slint::SharedString> = (0..ui.get_plan_items().row_count())
-        .map(|i| ui.get_plan_items().row_data(i).unwrap())
-        .filter(|s| !s.trim().is_empty())
+    let plan_items: Vec<(bool, slint::SharedString)> = (0..ui.get_plan_items().row_count())
+        .map(|i| {
+            let text = ui.get_plan_items().row_data(i).unwrap();
+            let checked = ui.get_plan_checked().row_data(i).unwrap_or(false);
+            (checked, text)
+        })
+        .filter(|(_, text)| !text.trim().is_empty())
         .collect();
-    let delegate_items: Vec<slint::SharedString> = (0..ui.get_delegate_items().row_count())
-        .map(|i| ui.get_delegate_items().row_data(i).unwrap())
-        .filter(|s| !s.trim().is_empty())
+    let delegate_items: Vec<(bool, slint::SharedString)> = (0..ui.get_delegate_items().row_count())
+        .map(|i| {
+            let text = ui.get_delegate_items().row_data(i).unwrap();
+            let checked = ui.get_delegate_checked().row_data(i).unwrap_or(false);
+            (checked, text)
+        })
+        .filter(|(_, text)| !text.trim().is_empty())
         .collect();
-    let delete_items: Vec<slint::SharedString> = (0..ui.get_delete_items().row_count())
-        .map(|i| ui.get_delete_items().row_data(i).unwrap())
-        .filter(|s| !s.trim().is_empty())
+    let delete_items: Vec<(bool, slint::SharedString)> = (0..ui.get_delete_items().row_count())
+        .map(|i| {
+            let text = ui.get_delete_items().row_data(i).unwrap();
+            let checked = ui.get_delete_checked().row_data(i).unwrap_or(false);
+            (checked, text)
+        })
+        .filter(|(_, text)| !text.trim().is_empty())
         .collect();
     save_to_json(&doit_items, &plan_items, &delegate_items, &delete_items);
 }
@@ -161,10 +237,42 @@ fn main() -> Result<(), slint::PlatformError> {
     
     // JSON 파일에서 데이터 로드
     if let Some(data) = load_from_json() {
-        ui.set_doit_items(ModelRc::from(data.doit_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
-        ui.set_plan_items(ModelRc::from(data.plan_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
-        ui.set_delegate_items(ModelRc::from(data.delegate_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
-        ui.set_delete_items(ModelRc::from(data.delete_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
+        // 기존 형식(문자열 배열)과 새 형식(구조체 배열) 모두 지원
+        let doit_texts: Vec<slint::SharedString> = data.doit_items.iter()
+            .map(|item| item.text.as_str().into())
+            .collect();
+        let doit_checked: Vec<bool> = data.doit_items.iter()
+            .map(|item| item.checked)
+            .collect();
+        ui.set_doit_items(ModelRc::from(doit_texts.as_slice()));
+        ui.set_doit_checked(ModelRc::from(doit_checked.as_slice()));
+        
+        let plan_texts: Vec<slint::SharedString> = data.plan_items.iter()
+            .map(|item| item.text.as_str().into())
+            .collect();
+        let plan_checked: Vec<bool> = data.plan_items.iter()
+            .map(|item| item.checked)
+            .collect();
+        ui.set_plan_items(ModelRc::from(plan_texts.as_slice()));
+        ui.set_plan_checked(ModelRc::from(plan_checked.as_slice()));
+        
+        let delegate_texts: Vec<slint::SharedString> = data.delegate_items.iter()
+            .map(|item| item.text.as_str().into())
+            .collect();
+        let delegate_checked: Vec<bool> = data.delegate_items.iter()
+            .map(|item| item.checked)
+            .collect();
+        ui.set_delegate_items(ModelRc::from(delegate_texts.as_slice()));
+        ui.set_delegate_checked(ModelRc::from(delegate_checked.as_slice()));
+        
+        let delete_texts: Vec<slint::SharedString> = data.delete_items.iter()
+            .map(|item| item.text.as_str().into())
+            .collect();
+        let delete_checked: Vec<bool> = data.delete_items.iter()
+            .map(|item| item.checked)
+            .collect();
+        ui.set_delete_items(ModelRc::from(delete_texts.as_slice()));
+        ui.set_delete_checked(ModelRc::from(delete_checked.as_slice()));
     }
 
     // --- 트레이 설정 시작 ---
@@ -251,10 +359,16 @@ fn main() -> Result<(), slint::PlatformError> {
             let mut items: Vec<slint::SharedString> = (0..model.row_count())
                 .map(|i| model.row_data(i).unwrap())
                 .collect();
+            let checked_model = ui.get_doit_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
             let text_clone = text.clone();
             let should_save = !text_clone.trim().is_empty();
             items.push(text.into());
+            checked.push(false); // 새 아이템은 기본적으로 체크되지 않음
             ui.set_doit_items(ModelRc::from(items.as_slice()));
+            ui.set_doit_checked(ModelRc::from(checked.as_slice()));
             
             // 빈 문자열이 아닐 때만 JSON 파일에 저장
             if should_save {
@@ -270,10 +384,16 @@ fn main() -> Result<(), slint::PlatformError> {
             let mut items: Vec<slint::SharedString> = (0..model.row_count())
                 .map(|i| model.row_data(i).unwrap())
                 .collect();
+            let checked_model = ui.get_plan_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
             let text_clone = text.clone();
             let should_save = !text_clone.trim().is_empty();
             items.push(text.into());
+            checked.push(false);
             ui.set_plan_items(ModelRc::from(items.as_slice()));
+            ui.set_plan_checked(ModelRc::from(checked.as_slice()));
             
             // 빈 문자열이 아닐 때만 JSON 파일에 저장
             if should_save {
@@ -289,10 +409,16 @@ fn main() -> Result<(), slint::PlatformError> {
             let mut items: Vec<slint::SharedString> = (0..model.row_count())
                 .map(|i| model.row_data(i).unwrap())
                 .collect();
+            let checked_model = ui.get_delegate_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
             let text_clone = text.clone();
             let should_save = !text_clone.trim().is_empty();
             items.push(text.into());
+            checked.push(false);
             ui.set_delegate_items(ModelRc::from(items.as_slice()));
+            ui.set_delegate_checked(ModelRc::from(checked.as_slice()));
             
             // 빈 문자열이 아닐 때만 JSON 파일에 저장
             if should_save {
@@ -308,13 +434,80 @@ fn main() -> Result<(), slint::PlatformError> {
             let mut items: Vec<slint::SharedString> = (0..model.row_count())
                 .map(|i| model.row_data(i).unwrap())
                 .collect();
+            let checked_model = ui.get_delete_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
             let text_clone = text.clone();
             let should_save = !text_clone.trim().is_empty();
             items.push(text.into());
+            checked.push(false);
             ui.set_delete_items(ModelRc::from(items.as_slice()));
+            ui.set_delete_checked(ModelRc::from(checked.as_slice()));
             
             // 빈 문자열이 아닐 때만 JSON 파일에 저장
             if should_save {
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    // 체크 상태 토글 콜백 처리
+    let ui_weak = ui.as_weak();
+    ui.on_toggle_doit_checked(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let checked_model = ui.get_doit_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
+            if (index as usize) < checked.len() {
+                checked[index as usize] = !checked[index as usize];
+                ui.set_doit_checked(ModelRc::from(checked.as_slice()));
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    let ui_weak = ui.as_weak();
+    ui.on_toggle_plan_checked(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let checked_model = ui.get_plan_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
+            if (index as usize) < checked.len() {
+                checked[index as usize] = !checked[index as usize];
+                ui.set_plan_checked(ModelRc::from(checked.as_slice()));
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    let ui_weak = ui.as_weak();
+    ui.on_toggle_delegate_checked(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let checked_model = ui.get_delegate_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
+            if (index as usize) < checked.len() {
+                checked[index as usize] = !checked[index as usize];
+                ui.set_delegate_checked(ModelRc::from(checked.as_slice()));
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    let ui_weak = ui.as_weak();
+    ui.on_toggle_delete_checked(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let checked_model = ui.get_delete_checked();
+            let mut checked: Vec<bool> = (0..checked_model.row_count())
+                .map(|i| checked_model.row_data(i).unwrap_or(false))
+                .collect();
+            if (index as usize) < checked.len() {
+                checked[index as usize] = !checked[index as usize];
+                ui.set_delete_checked(ModelRc::from(checked.as_slice()));
                 save_ui_to_json(&ui);
             }
         }

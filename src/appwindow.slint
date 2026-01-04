@@ -9,8 +9,10 @@ import {
 // 그리드 아이템 컴포넌트 (체크박스 + 텍스트, 더블클릭 수정)
 component GridItem inherits HorizontalBox {
     callback item-updated(int, string); // 인덱스, 새 텍스트
+    callback checked-toggled(int); // 인덱스
     in property <string> item-text: "";
     in property <int> item-index: 0;
+    in property <bool> item-checked: false;
     in property <color> text-color: #000;
     spacing: 8px;
     alignment: start;
@@ -18,7 +20,10 @@ component GridItem inherits HorizontalBox {
     in-out property <bool> is-editing: root.item-text == "";
     
     checkbox := CheckBox {
-        checked: false;
+        checked: root.item-checked;
+        toggled => {
+            root.checked-toggled(root.item-index);
+        }
     }
     
     if root.is-editing: edit_field := LineEdit {
@@ -54,6 +59,12 @@ component GridItem inherits HorizontalBox {
                 horizontal-alignment: left;
                 width: 100%;
             }
+        }
+        if root.item-checked: strikethrough_line := Rectangle {
+            width: 100%;
+            height: 2px;
+            y: 15px;
+            background: root.text-color;
         }
     }
 }
@@ -95,12 +106,20 @@ export component AppWindow inherits Window {
     callback update_plan_item(int, string);
     callback update_delegate_item(int, string);
     callback update_delete_item(int, string);
+    callback toggle_doit_checked(int);
+    callback toggle_plan_checked(int);
+    callback toggle_delegate_checked(int);
+    callback toggle_delete_checked(int);
     in property <float> app_width: 800.0;
     in property <float> app_height: 850.0;
     in-out property <[string]> doit_items: [];
     in-out property <[string]> plan_items: [];
     in-out property <[string]> delegate_items: [];
     in-out property <[string]> delete_items: [];
+    in-out property <[bool]> doit_checked: [];
+    in-out property <[bool]> plan_checked: [];
+    in-out property <[bool]> delegate_checked: [];
+    in-out property <[bool]> delete_checked: [];
     no-frame: true;
     background: transparent;
     width: app_width * 1px;
@@ -177,9 +196,13 @@ export component AppWindow inherits Window {
                     for item[index] in root.doit_items: GridItem {
                         item-text: item;
                         item-index: index;
+                        item-checked: index < root.doit_checked.length ? root.doit_checked[index] : false;
                         text-color: #000;
                         item-updated(idx, new-text) => {
                             root.update_doit_item(idx, new-text);
+                        }
+                        checked-toggled(idx) => {
+                            root.toggle_doit_checked(idx);
                         }
                     }
                 }
@@ -217,9 +240,13 @@ export component AppWindow inherits Window {
                     for item[index] in root.plan_items: GridItem {
                         item-text: item;
                         item-index: index;
+                        item-checked: index < root.plan_checked.length ? root.plan_checked[index] : false;
                         text-color: #000;
                         item-updated(idx, new-text) => {
                             root.update_plan_item(idx, new-text);
+                        }
+                        checked-toggled(idx) => {
+                            root.toggle_plan_checked(idx);
                         }
                     }
                 }
@@ -257,9 +284,13 @@ export component AppWindow inherits Window {
                     for item[index] in root.delegate_items: GridItem {
                         item-text: item;
                         item-index: index;
+                        item-checked: index < root.delegate_checked.length ? root.delegate_checked[index] : false;
                         text-color: #000;
                         item-updated(idx, new-text) => {
                             root.update_delegate_item(idx, new-text);
+                        }
+                        checked-toggled(idx) => {
+                            root.toggle_delegate_checked(idx);
                         }
                     }
                 }
@@ -296,9 +327,13 @@ export component AppWindow inherits Window {
                     for item[index] in root.delete_items: GridItem {
                         item-text: item;
                         item-index: index;
+                        item-checked: index < root.delete_checked.length ? root.delete_checked[index] : false;
                         text-color: #000;
                         item-updated(idx, new-text) => {
                             root.update_delete_item(idx, new-text);
+                        }
+                        checked-toggled(idx) => {
+                            root.toggle_delete_checked(idx);
                         }
                     }
                 }
