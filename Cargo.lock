@@ -5315,6 +5315,8 @@ version = "0.1.0"
 dependencies = [
  "image",
  "raw-window-handle",
+ "serde",
+ "serde_json",
  "slint",
  "slint-build",
  "tray-icon",

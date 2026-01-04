@@ -96,6 +96,10 @@ export component AppWindow inherits Window {
     in-out property <[string]> plan_items: [];
     in-out property <[string]> delegate_items: [];
     in-out property <[string]> delete_items: [];
+    in-out property <bool> show_doit_dialog: false;
+    in-out property <bool> show_plan_dialog: false;
+    in-out property <bool> show_delegate_dialog: false;
+    in-out property <bool> show_delete_dialog: false;
     no-frame: true;
     background: transparent;
     width: app_width * 1px;
@@ -143,6 +147,7 @@ export component AppWindow inherits Window {
             Rectangle {
                 row: 0;
                 col: 0;
+                width: root.app_width / 2 * 1px;
                 background: #F17D7D;
                 border-width: 2px;
                 border-color: #000;
@@ -159,27 +164,12 @@ export component AppWindow inherits Window {
                             color: #000;
                         }
                         
-                        // 버튼 및 팝업
+                        // 버튼 및 다이얼로그
                         doit_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                doit_popup.show();
+                                root.show_doit_dialog = true;
                                 root.dialog_shown(); // Rust로 신호를 보냄
-                            }
-                        }
-
-                        doit_popup := PopupWindow {
-                            x: ((root.app_width / 2) * 1px) - 320px; // 버튼 왼쪽으로 팝업 배치 (창 크기에 맞춰 조절)
-                            y: doit_btn.height + 10px;
-                            InputContent {
-                                dialog_title: "중요/긴급 항목 추가";
-                                confirmed(t) => {
-                                    root.add_doit_item(t);
-                                    doit_popup.close();
-                                }
-                                cancelled => {
-                                    doit_popup.close();
-                                }
                             }
                         }
                     }
@@ -188,6 +178,7 @@ export component AppWindow inherits Window {
                         text: "• " + item;
                         color: #000;
                         font-size: 16px;
+                        overflow: elide;
                     }
                 }
             }
@@ -196,6 +187,7 @@ export component AppWindow inherits Window {
             Rectangle {
                 row: 0;
                 col: 1;
+                width: root.app_width / 2 * 1px;
                 background: #8CC684;
                 border-width: 2px;
                 border-color: #000;
@@ -215,23 +207,8 @@ export component AppWindow inherits Window {
                         plan_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                plan_popup.show();
+                                root.show_plan_dialog = true;
                                 root.dialog_shown(); // Rust로 신호를 보냄
-                            }
-                        }
-
-                        plan_popup := PopupWindow {
-                            x: ((root.app_width / 2) * 1px) - 320px;
-                            y: plan_btn.height + 10px;
-                            InputContent {
-                                dialog_title: "계획 항목 추가";
-                                confirmed(t) => {
-                                    root.add_plan_item(t);
-                                    plan_popup.close();
-                                }
-                                cancelled => {
-                                    plan_popup.close();
-                                }
                             }
                         }
                     }
@@ -240,6 +217,7 @@ export component AppWindow inherits Window {
                         text: "• " + item;
                         color: #000;
                         font-size: 16px;
+                        overflow: elide;
                     }
                 }
             }
@@ -248,6 +226,7 @@ export component AppWindow inherits Window {
             Rectangle {
                 row: 1;
                 col: 0;
+                width: root.app_width / 2 * 1px;
                 background: #FFD065;
                 border-width: 2px;
                 border-color: #000;
@@ -267,23 +246,8 @@ export component AppWindow inherits Window {
                         delegate_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                delegate_popup.show();
+                                root.show_delegate_dialog = true;
                                 root.dialog_shown(); // Rust로 신호를 보냄
-                            }
-                        }
-
-                        delegate_popup := PopupWindow {
-                            x: ((root.app_width / 2) * 1px) - 320px;
-                            y: delegate_btn.height + 10px;
-                            InputContent {
-                                dialog_title: "위임 항목 추가";
-                                confirmed(t) => {
-                                    root.add_delegate_item(t);
-                                    delegate_popup.close();
-                                }
-                                cancelled => {
-                                    delegate_popup.close();
-                                }
                             }
                         }
                     }
@@ -292,6 +256,7 @@ export component AppWindow inherits Window {
                         text: "• " + item;
                         color: #000;
                         font-size: 16px;
+                        overflow: elide;
                     }
                 }
             }
@@ -300,6 +265,7 @@ export component AppWindow inherits Window {
             Rectangle {
                 row: 1;
                 col: 1;
+                width: root.app_width / 2 * 1px;
                 background: #D9D9D9;
                 border-width: 2px;
                 border-color: #000;
@@ -318,23 +284,8 @@ export component AppWindow inherits Window {
                         delete_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                delete_popup.show();
+                                root.show_delete_dialog = true;
                                 root.dialog_shown(); // Rust로 신호를 보냄
-                            }
-                        }
-
-                        delete_popup := PopupWindow {
-                            x: ((root.app_width / 2) * 1px) - 320px;
-                            y: delete_btn.height + 10px;
-                            InputContent {
-                                dialog_title: "삭제 항목 추가";
-                                confirmed(t) => {
-                                    root.add_delete_item(t);
-                                    delete_popup.close();
-                                }
-                                cancelled => {
-                                    delete_popup.close();
-                                }
                             }
                         }
                     }
@@ -343,7 +294,93 @@ export component AppWindow inherits Window {
                         text: "• " + item;
                         color: #000;
                         font-size: 16px;
+                        overflow: elide;
                     }
+                }
+            }
+        }
+    }
+    
+    // 다이얼로그 오버레이
+    if root.show_doit_dialog || root.show_plan_dialog || root.show_delegate_dialog || root.show_delete_dialog: Rectangle {
+        background: rgba(0, 0, 0, 0.0);
+        width: root.width;
+        height: root.height;
+        TouchArea {
+            // 배경 클릭 시 닫히지 않도록 (다이얼로그 내부에서만 닫기 가능)
+        }
+        
+        // DO IT 다이얼로그 (Q1: 왼쪽 위)
+        if root.show_doit_dialog: Rectangle {
+            // x: 왼쪽 셀의 오른쪽 끝 - 다이얼로그 너비
+            // 버튼 위치: -app_width/2 + app_width/2 - 15(padding) - 32(버튼) = -47
+            // 다이얼로그를 버튼 왼쪽에 배치
+            x: ((-root.app_width / 2) * 1px) + ((root.app_width / 2) * 1px) - 15px - 175px;
+            // y: 상단 헤더(45px) + padding(15px) + 버튼 높이(32px) + 여유(10px)
+            y: ((-root.app_height / 2) * 1px) + 90px + 15px + 32px + 10px;
+            InputContent {
+                dialog_title: "중요/긴급 항목 추가";
+                confirmed(t) => {
+                    root.add_doit_item(t);
+                    root.show_doit_dialog = false;
+                }
+                cancelled => {
+                    root.show_doit_dialog = false;
+                }
+            }
+        }
+        
+        // PLAN 다이얼로그 (Q2: 오른쪽 위)
+        if root.show_plan_dialog: Rectangle {
+            // x: 오른쪽 셀의 오른쪽 끝 - 다이얼로그 너비
+            // 버튼 위치: 0 + app_width/2 - 15 - 32 = app_width/2 - 47
+            x: ((root.app_width / 2) * 1px) - 15px - 175px;
+            // y: 상단 헤더(45px) + padding(15px) + 버튼 높이(32px) + 여유(10px)
+            y: ((-root.app_height / 2) * 1px) + 90px + 15px + 32px + 10px;
+            InputContent {
+                dialog_title: "중요/안긴급 추가";
+                confirmed(t) => {
+                    root.add_plan_item(t);
+                    root.show_plan_dialog = false;
+                }
+                cancelled => {
+                    root.show_plan_dialog = false;
+                }
+            }
+        }
+        
+        // DELEGATE 다이얼로그 (Q3: 왼쪽 아래)
+        if root.show_delegate_dialog: Rectangle {
+            // x: 왼쪽 셀의 오른쪽 끝 - 다이얼로그 너비
+            x: ((-root.app_width / 2) * 1px) + ((root.app_width / 2) * 1px) - 15px - 175px;
+            // y: 상단 헤더(45px) + 상단 셀 높이 + padding(15px) + 버튼 높이(32px) + 여유(10px)
+            y: ((-root.app_height / 2) * 1px) + 90px + (((root.app_height - 100) / 2) * 1px) + 15px + 32px + 10px;
+            InputContent {
+                dialog_title: "긴급/안중요 추가";
+                confirmed(t) => {
+                    root.add_delegate_item(t);
+                    root.show_delegate_dialog = false;
+                }
+                cancelled => {
+                    root.show_delegate_dialog = false;
+                }
+            }
+        }
+        
+        // DELETE 다이얼로그 (Q4: 오른쪽 아래)
+        if root.show_delete_dialog: Rectangle {
+            // x: 오른쪽 셀의 오른쪽 끝 - 다이얼로그 너비
+            x: ((root.app_width / 2) * 1px) - 15px - 175px;
+            // y: 상단 헤더(45px) + 상단 셀 높이 + padding(15px) + 버튼 높이(32px) + 여유(10px)
+            y: ((-root.app_height / 2) * 1px) + 90px + (((root.app_height - 100) / 2) * 1px) + 15px + 32px + 10px;
+            InputContent {
+                dialog_title: "안중요/안긴급 추가";
+                confirmed(t) => {
+                    root.add_delete_item(t);
+                    root.show_delete_dialog = false;
+                }
+                cancelled => {
+                    root.show_delete_dialog = false;
                 }
             }
         }

@@ -5,7 +5,84 @@ use tray_icon::{
     TrayIconBuilder,
 };
 use std::path::Path;
+use std::fs;
 use slint::{Model, ModelRc};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct EisenhowerData {
+    doit_items: Vec<String>,
+    plan_items: Vec<String>,
+    delegate_items: Vec<String>,
+    delete_items: Vec<String>,
+}
+
+fn get_json_path() -> std::path::PathBuf {
+    // 실행 파일과 같은 디렉토리에 data.json 저장
+    std::env::current_exe()
+        .ok()
+        .and_then(|mut path| {
+            path.pop();
+            Some(path.join("data.json"))
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from("data.json"))
+}
+
+fn save_to_json(doit_items: &[slint::SharedString], plan_items: &[slint::SharedString], 
+                delegate_items: &[slint::SharedString], delete_items: &[slint::SharedString]) {
+    let data = EisenhowerData {
+        doit_items: doit_items.iter().map(|s| s.to_string()).collect(),
+        plan_items: plan_items.iter().map(|s| s.to_string()).collect(),
+        delegate_items: delegate_items.iter().map(|s| s.to_string()).collect(),
+        delete_items: delete_items.iter().map(|s| s.to_string()).collect(),
+    };
+    
+    let json_path = get_json_path();
+    if let Ok(json_str) = serde_json::to_string_pretty(&data) {
+        if let Err(e) = fs::write(&json_path, json_str) {
+            eprintln!("JSON 저장 실패: {}", e);
+        }
+    }
+}
+
+fn load_from_json() -> Option<EisenhowerData> {
+    let json_path = get_json_path();
+    if !json_path.exists() {
+        return None;
+    }
+    
+    match fs::read_to_string(&json_path) {
+        Ok(content) => {
+            match serde_json::from_str::<EisenhowerData>(&content) {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    eprintln!("JSON 파싱 실패: {}", e);
+                    None
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("JSON 파일 읽기 실패: {}", e);
+            None
+        }
+    }
+}
+
+fn save_ui_to_json(ui: &AppWindow) {
+    let doit_items: Vec<slint::SharedString> = (0..ui.get_doit_items().row_count())
+        .map(|i| ui.get_doit_items().row_data(i).unwrap())
+        .collect();
+    let plan_items: Vec<slint::SharedString> = (0..ui.get_plan_items().row_count())
+        .map(|i| ui.get_plan_items().row_data(i).unwrap())
+        .collect();
+    let delegate_items: Vec<slint::SharedString> = (0..ui.get_delegate_items().row_count())
+        .map(|i| ui.get_delegate_items().row_data(i).unwrap())
+        .collect();
+    let delete_items: Vec<slint::SharedString> = (0..ui.get_delete_items().row_count())
+        .map(|i| ui.get_delete_items().row_data(i).unwrap())
+        .collect();
+    save_to_json(&doit_items, &plan_items, &delegate_items, &delete_items);
+}
 
 #[cfg(target_os = "windows")]
 #[global_allocator]
@@ -76,6 +153,14 @@ fn load_icon(path: &Path) -> tray_icon::Icon {
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
+    
+    // JSON 파일에서 데이터 로드
+    if let Some(data) = load_from_json() {
+        ui.set_doit_items(ModelRc::from(data.doit_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
+        ui.set_plan_items(ModelRc::from(data.plan_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
+        ui.set_delegate_items(ModelRc::from(data.delegate_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
+        ui.set_delete_items(ModelRc::from(data.delete_items.iter().map(|s| s.as_str().into()).collect::<Vec<_>>().as_slice()));
+    }
 
     // --- 트레이 설정 시작 ---
     let tray_menu = Menu::new();
@@ -153,51 +238,51 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_close_clicked(|| { std::process::exit(0); });
     
-    // 다이얼로그 표시 시 포커스 설정
-    #[cfg(windows)]
-    {
-        let ui_weak = ui.as_weak();
-        ui.on_dialog_shown(move || {
-            // 다이얼로그가 표시된 후 약간의 지연을 두고 포커스 설정
-            let ui_weak_clone = ui_weak.clone();
-            slint::Timer::single_shot(std::time::Duration::from_millis(150), move || {
-                if let Some(ui) = ui_weak_clone.upgrade() {
-                    use windows::Win32::UI::WindowsAndMessaging::*;
-                    use windows::Win32::Foundation::HWND;
-                    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-                    
-                    // 메인 창의 핸들 가져오기
-                    let main_window = ui.window();
-                    let main_handle = main_window.window_handle();
-                    if let Ok(handle_wrapper) = main_handle.window_handle() {
-                        if let RawWindowHandle::Win32(win32_handle) = handle_wrapper.as_raw() {
-                            let main_hwnd = HWND(win32_handle.hwnd.get() as _);
-                            unsafe {
-                                // 메인 창의 NOACTIVATE를 일시적으로 제거하고 포커스 설정
-                                let mut ex_style = GetWindowLongW(main_hwnd, GWL_EXSTYLE);
-                                let had_noactivate = (ex_style & WS_EX_NOACTIVATE.0 as i32) != 0;
-                                
-                                if had_noactivate {
-                                    ex_style &= !WS_EX_NOACTIVATE.0 as i32;
-                                    let _ = SetWindowLongW(main_hwnd, GWL_EXSTYLE, ex_style);
-                                }
-                                
-                                // 메인 창을 활성화
-                                let _ = SetForegroundWindow(main_hwnd);
-                                let _ = BringWindowToTop(main_hwnd);
-                                
-                                // 다시 NOACTIVATE 설정 (필요한 경우)
-                                if had_noactivate {
-                                    ex_style |= WS_EX_NOACTIVATE.0 as i32;
-                                    let _ = SetWindowLongW(main_hwnd, GWL_EXSTYLE, ex_style);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        });
-    }
+    // 다이얼로그 표시 시 포커스 설정 (PopupWindow가 닫히지 않도록 주석 처리)
+    // #[cfg(windows)]
+    // {
+    //     let ui_weak = ui.as_weak();
+    //     ui.on_dialog_shown(move || {
+    //         // 다이얼로그가 표시된 후 약간의 지연을 두고 포커스 설정
+    //         let ui_weak_clone = ui_weak.clone();
+    //         slint::Timer::single_shot(std::time::Duration::from_millis(150), move || {
+    //             if let Some(ui) = ui_weak_clone.upgrade() {
+    //                 use windows::Win32::UI::WindowsAndMessaging::*;
+    //                 use windows::Win32::Foundation::HWND;
+    //                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    //                 
+    //                 // 메인 창의 핸들 가져오기
+    //                 let main_window = ui.window();
+    //                 let main_handle = main_window.window_handle();
+    //                 if let Ok(handle_wrapper) = main_handle.window_handle() {
+    //                     if let RawWindowHandle::Win32(win32_handle) = handle_wrapper.as_raw() {
+    //                         let main_hwnd = HWND(win32_handle.hwnd.get() as _);
+    //                         unsafe {
+    //                             // 메인 창의 NOACTIVATE를 일시적으로 제거하고 포커스 설정
+    //                             let mut ex_style = GetWindowLongW(main_hwnd, GWL_EXSTYLE);
+    //                             let had_noactivate = (ex_style & WS_EX_NOACTIVATE.0 as i32) != 0;
+    //                             
+    //                             if had_noactivate {
+    //                                 ex_style &= !WS_EX_NOACTIVATE.0 as i32;
+    //                                 let _ = SetWindowLongW(main_hwnd, GWL_EXSTYLE, ex_style);
+    //                             }
+    //                             
+    //                             // 메인 창을 활성화
+    //                             let _ = SetForegroundWindow(main_hwnd);
+    //                             let _ = BringWindowToTop(main_hwnd);
+    //                             
+    //                             // 다시 NOACTIVATE 설정 (필요한 경우)
+    //                             if had_noactivate {
+    //                                 ex_style |= WS_EX_NOACTIVATE.0 as i32;
+    //                                 let _ = SetWindowLongW(main_hwnd, GWL_EXSTYLE, ex_style);
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         });
+    //     });
+    // }
     
     // 입력 항목 추가 콜백 처리
     let ui_weak = ui.as_weak();
@@ -210,6 +295,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     .collect();
                 items.push(text.trim().into());
                 ui.set_doit_items(ModelRc::from(items.as_slice()));
+                
+                // JSON 파일에 저장
+                save_ui_to_json(&ui);
             }
         }
     });
@@ -224,6 +312,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     .collect();
                 items.push(text.trim().into());
                 ui.set_plan_items(ModelRc::from(items.as_slice()));
+                
+                // JSON 파일에 저장
+                save_ui_to_json(&ui);
             }
         }
     });
@@ -238,6 +329,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     .collect();
                 items.push(text.trim().into());
                 ui.set_delegate_items(ModelRc::from(items.as_slice()));
+                
+                // JSON 파일에 저장
+                save_ui_to_json(&ui);
             }
         }
     });
@@ -252,6 +346,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     .collect();
                 items.push(text.trim().into());
                 ui.set_delete_items(ModelRc::from(items.as_slice()));
+                
+                // JSON 파일에 저장
+                save_ui_to_json(&ui);
             }
         }
     });
