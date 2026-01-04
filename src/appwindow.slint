@@ -3,7 +3,60 @@ import {
     VerticalBox,
     HorizontalBox,
     LineEdit,
+    CheckBox,
 } from "std-widgets.slint";
+
+// 그리드 아이템 컴포넌트 (체크박스 + 텍스트, 더블클릭 수정)
+component GridItem inherits HorizontalBox {
+    callback item-updated(int, string); // 인덱스, 새 텍스트
+    in property <string> item-text: "";
+    in property <int> item-index: 0;
+    in property <color> text-color: #000;
+    spacing: 8px;
+    alignment: start;
+    
+    in-out property <bool> is-editing: root.item-text == "";
+    
+    checkbox := CheckBox {
+        checked: false;
+    }
+    
+    if root.is-editing: edit_field := LineEdit {
+        text: root.item-text;
+        font-size: 18px;
+        min-height: 32px;
+        min-width: 200px;
+        width: 30%;
+        vertical-stretch: 0;
+        accepted => {
+            if self.text != "" {
+                root.item-updated(root.item-index, self.text);
+                root.is-editing = false;
+            }
+        }
+    }
+    
+    if !root.is-editing: text_area := Rectangle {
+        height: 32px;
+        vertical-stretch: 0;
+        background: transparent;
+        text_touch := TouchArea {
+            double-clicked => {
+                root.is-editing = true;
+            }
+            Text {
+                text: root.item-text;
+                color: root.text-color;
+                font-size: 18px;
+                // font-weight: 400;
+                overflow: elide;
+                vertical-alignment: center;
+                horizontal-alignment: left;
+                width: 100%;
+            }
+        }
+    }
+}
 
 // 플러스 버튼 컴포넌트
 component BtnPlus inherits Rectangle {
@@ -32,74 +85,22 @@ component BtnPlus inherits Rectangle {
     }
 }
 
-// InputDialog 수정 (Window 상속 제거)
-component InputContent inherits Rectangle {
-    callback confirmed(string);
-    callback cancelled();
-    in property <string> dialog_title: "";
-    in property <string> placeholder: "";
-    width: 350px;
-    height: 180px;
-    background: #2D2D2D;
-    border-radius: 8px;
-    border-width: 2px;
-    border-color: #444;
-    VerticalBox {
-        padding: 15px;
-        spacing: 12px;
-        Text {
-            text: root.dialog_title;
-            color: #fff;
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        input_field := LineEdit {
-            placeholder-text: root.placeholder;
-            // 엔터 키 대응
-            accepted => {
-                root.confirmed(self.text);
-            }
-        }
-
-        HorizontalBox {
-            spacing: 10px;
-            alignment: end;
-            Button {
-                text: "취소";
-                clicked => {
-                    root.cancelled();
-                }
-            }
-
-            Button {
-                text: "확인";
-                primary: true;
-                clicked => {
-                    root.confirmed(input_field.text);
-                }
-            }
-        }
-    }
-}
-
 export component AppWindow inherits Window {
     callback close_clicked();
     callback add_doit_item(string);
     callback add_plan_item(string);
     callback add_delegate_item(string);
     callback add_delete_item(string);
-    callback dialog_shown();
+    callback update_doit_item(int, string);
+    callback update_plan_item(int, string);
+    callback update_delegate_item(int, string);
+    callback update_delete_item(int, string);
     in property <float> app_width: 800.0;
     in property <float> app_height: 850.0;
     in-out property <[string]> doit_items: [];
     in-out property <[string]> plan_items: [];
     in-out property <[string]> delegate_items: [];
     in-out property <[string]> delete_items: [];
-    in-out property <bool> show_doit_dialog: false;
-    in-out property <bool> show_plan_dialog: false;
-    in-out property <bool> show_delegate_dialog: false;
-    in-out property <bool> show_delete_dialog: false;
     no-frame: true;
     background: transparent;
     width: app_width * 1px;
@@ -164,21 +165,22 @@ export component AppWindow inherits Window {
                             color: #000;
                         }
                         
-                        // 버튼 및 다이얼로그
+                        // 버튼
                         doit_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                root.show_doit_dialog = true;
-                                root.dialog_shown(); // Rust로 신호를 보냄
+                                root.add_doit_item("");
                             }
                         }
                     }
 
-                    for item in root.doit_items: Text {
-                        text: "• " + item;
-                        color: #000;
-                        font-size: 16px;
-                        overflow: elide;
+                    for item[index] in root.doit_items: GridItem {
+                        item-text: item;
+                        item-index: index;
+                        text-color: #000;
+                        item-updated(idx, new-text) => {
+                            root.update_doit_item(idx, new-text);
+                        }
                     }
                 }
             }
@@ -207,17 +209,18 @@ export component AppWindow inherits Window {
                         plan_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                root.show_plan_dialog = true;
-                                root.dialog_shown(); // Rust로 신호를 보냄
+                                root.add_plan_item("");
                             }
                         }
                     }
 
-                    for item in root.plan_items: Text {
-                        text: "• " + item;
-                        color: #000;
-                        font-size: 16px;
-                        overflow: elide;
+                    for item[index] in root.plan_items: GridItem {
+                        item-text: item;
+                        item-index: index;
+                        text-color: #000;
+                        item-updated(idx, new-text) => {
+                            root.update_plan_item(idx, new-text);
+                        }
                     }
                 }
             }
@@ -246,17 +249,18 @@ export component AppWindow inherits Window {
                         delegate_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                root.show_delegate_dialog = true;
-                                root.dialog_shown(); // Rust로 신호를 보냄
+                                root.add_delegate_item("");
                             }
                         }
                     }
 
-                    for item in root.delegate_items: Text {
-                        text: "• " + item;
-                        color: #000;
-                        font-size: 16px;
-                        overflow: elide;
+                    for item[index] in root.delegate_items: GridItem {
+                        item-text: item;
+                        item-index: index;
+                        text-color: #000;
+                        item-updated(idx, new-text) => {
+                            root.update_delegate_item(idx, new-text);
+                        }
                     }
                 }
             }
@@ -284,103 +288,19 @@ export component AppWindow inherits Window {
                         delete_btn := BtnPlus {
                             theme-color: #000;
                             clicked => {
-                                root.show_delete_dialog = true;
-                                root.dialog_shown(); // Rust로 신호를 보냄
+                                root.add_delete_item("");
                             }
                         }
                     }
 
-                    for item in root.delete_items: Text {
-                        text: "• " + item;
-                        color: #000;
-                        font-size: 16px;
-                        overflow: elide;
+                    for item[index] in root.delete_items: GridItem {
+                        item-text: item;
+                        item-index: index;
+                        text-color: #000;
+                        item-updated(idx, new-text) => {
+                            root.update_delete_item(idx, new-text);
+                        }
                     }
-                }
-            }
-        }
-    }
-    
-    // 다이얼로그 오버레이
-    if root.show_doit_dialog || root.show_plan_dialog || root.show_delegate_dialog || root.show_delete_dialog: Rectangle {
-        background: rgba(0, 0, 0, 0.0);
-        width: root.width;
-        height: root.height;
-        TouchArea {
-            // 배경 클릭 시 닫히지 않도록 (다이얼로그 내부에서만 닫기 가능)
-        }
-        
-        // DO IT 다이얼로그 (Q1: 왼쪽 위)
-        if root.show_doit_dialog: Rectangle {
-            // x: 왼쪽 셀의 오른쪽 끝 - 다이얼로그 너비
-            // 버튼 위치: -app_width/2 + app_width/2 - 15(padding) - 32(버튼) = -47
-            // 다이얼로그를 버튼 왼쪽에 배치
-            x: ((-root.app_width / 2) * 1px) + ((root.app_width / 2) * 1px) - 15px - 175px;
-            // y: 상단 헤더(45px) + padding(15px) + 버튼 높이(32px) + 여유(10px)
-            y: ((-root.app_height / 2) * 1px) + 90px + 15px + 32px + 10px;
-            InputContent {
-                dialog_title: "중요/긴급 항목 추가";
-                confirmed(t) => {
-                    root.add_doit_item(t);
-                    root.show_doit_dialog = false;
-                }
-                cancelled => {
-                    root.show_doit_dialog = false;
-                }
-            }
-        }
-        
-        // PLAN 다이얼로그 (Q2: 오른쪽 위)
-        if root.show_plan_dialog: Rectangle {
-            // x: 오른쪽 셀의 오른쪽 끝 - 다이얼로그 너비
-            // 버튼 위치: 0 + app_width/2 - 15 - 32 = app_width/2 - 47
-            x: ((root.app_width / 2) * 1px) - 15px - 175px;
-            // y: 상단 헤더(45px) + padding(15px) + 버튼 높이(32px) + 여유(10px)
-            y: ((-root.app_height / 2) * 1px) + 90px + 15px + 32px + 10px;
-            InputContent {
-                dialog_title: "중요/안긴급 추가";
-                confirmed(t) => {
-                    root.add_plan_item(t);
-                    root.show_plan_dialog = false;
-                }
-                cancelled => {
-                    root.show_plan_dialog = false;
-                }
-            }
-        }
-        
-        // DELEGATE 다이얼로그 (Q3: 왼쪽 아래)
-        if root.show_delegate_dialog: Rectangle {
-            // x: 왼쪽 셀의 오른쪽 끝 - 다이얼로그 너비
-            x: ((-root.app_width / 2) * 1px) + ((root.app_width / 2) * 1px) - 15px - 175px;
-            // y: 상단 헤더(45px) + 상단 셀 높이 + padding(15px) + 버튼 높이(32px) + 여유(10px)
-            y: ((-root.app_height / 2) * 1px) + 90px + (((root.app_height - 100) / 2) * 1px) + 15px + 32px + 10px;
-            InputContent {
-                dialog_title: "긴급/안중요 추가";
-                confirmed(t) => {
-                    root.add_delegate_item(t);
-                    root.show_delegate_dialog = false;
-                }
-                cancelled => {
-                    root.show_delegate_dialog = false;
-                }
-            }
-        }
-        
-        // DELETE 다이얼로그 (Q4: 오른쪽 아래)
-        if root.show_delete_dialog: Rectangle {
-            // x: 오른쪽 셀의 오른쪽 끝 - 다이얼로그 너비
-            x: ((root.app_width / 2) * 1px) - 15px - 175px;
-            // y: 상단 헤더(45px) + 상단 셀 높이 + padding(15px) + 버튼 높이(32px) + 여유(10px)
-            y: ((-root.app_height / 2) * 1px) + 90px + (((root.app_height - 100) / 2) * 1px) + 15px + 32px + 10px;
-            InputContent {
-                dialog_title: "안중요/안긴급 추가";
-                confirmed(t) => {
-                    root.add_delete_item(t);
-                    root.show_delete_dialog = false;
-                }
-                cancelled => {
-                    root.show_delete_dialog = false;
                 }
             }
         }

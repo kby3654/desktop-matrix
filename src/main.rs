@@ -69,17 +69,22 @@ fn load_from_json() -> Option<EisenhowerData> {
 }
 
 fn save_ui_to_json(ui: &AppWindow) {
+    // 빈 문자열 아이템은 필터링하여 저장
     let doit_items: Vec<slint::SharedString> = (0..ui.get_doit_items().row_count())
         .map(|i| ui.get_doit_items().row_data(i).unwrap())
+        .filter(|s| !s.trim().is_empty())
         .collect();
     let plan_items: Vec<slint::SharedString> = (0..ui.get_plan_items().row_count())
         .map(|i| ui.get_plan_items().row_data(i).unwrap())
+        .filter(|s| !s.trim().is_empty())
         .collect();
     let delegate_items: Vec<slint::SharedString> = (0..ui.get_delegate_items().row_count())
         .map(|i| ui.get_delegate_items().row_data(i).unwrap())
+        .filter(|s| !s.trim().is_empty())
         .collect();
     let delete_items: Vec<slint::SharedString> = (0..ui.get_delete_items().row_count())
         .map(|i| ui.get_delete_items().row_data(i).unwrap())
+        .filter(|s| !s.trim().is_empty())
         .collect();
     save_to_json(&doit_items, &plan_items, &delegate_items, &delete_items);
 }
@@ -238,65 +243,21 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_close_clicked(|| { std::process::exit(0); });
     
-    // 다이얼로그 표시 시 포커스 설정 (PopupWindow가 닫히지 않도록 주석 처리)
-    // #[cfg(windows)]
-    // {
-    //     let ui_weak = ui.as_weak();
-    //     ui.on_dialog_shown(move || {
-    //         // 다이얼로그가 표시된 후 약간의 지연을 두고 포커스 설정
-    //         let ui_weak_clone = ui_weak.clone();
-    //         slint::Timer::single_shot(std::time::Duration::from_millis(150), move || {
-    //             if let Some(ui) = ui_weak_clone.upgrade() {
-    //                 use windows::Win32::UI::WindowsAndMessaging::*;
-    //                 use windows::Win32::Foundation::HWND;
-    //                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    //                 
-    //                 // 메인 창의 핸들 가져오기
-    //                 let main_window = ui.window();
-    //                 let main_handle = main_window.window_handle();
-    //                 if let Ok(handle_wrapper) = main_handle.window_handle() {
-    //                     if let RawWindowHandle::Win32(win32_handle) = handle_wrapper.as_raw() {
-    //                         let main_hwnd = HWND(win32_handle.hwnd.get() as _);
-    //                         unsafe {
-    //                             // 메인 창의 NOACTIVATE를 일시적으로 제거하고 포커스 설정
-    //                             let mut ex_style = GetWindowLongW(main_hwnd, GWL_EXSTYLE);
-    //                             let had_noactivate = (ex_style & WS_EX_NOACTIVATE.0 as i32) != 0;
-    //                             
-    //                             if had_noactivate {
-    //                                 ex_style &= !WS_EX_NOACTIVATE.0 as i32;
-    //                                 let _ = SetWindowLongW(main_hwnd, GWL_EXSTYLE, ex_style);
-    //                             }
-    //                             
-    //                             // 메인 창을 활성화
-    //                             let _ = SetForegroundWindow(main_hwnd);
-    //                             let _ = BringWindowToTop(main_hwnd);
-    //                             
-    //                             // 다시 NOACTIVATE 설정 (필요한 경우)
-    //                             if had_noactivate {
-    //                                 ex_style |= WS_EX_NOACTIVATE.0 as i32;
-    //                                 let _ = SetWindowLongW(main_hwnd, GWL_EXSTYLE, ex_style);
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         });
-    //     });
-    // }
-    
     // 입력 항목 추가 콜백 처리
     let ui_weak = ui.as_weak();
     ui.on_add_doit_item(move |text| {
         if let Some(ui) = ui_weak.upgrade() {
-            if !text.trim().is_empty() {
-                let model = ui.get_doit_items();
-                let mut items: Vec<slint::SharedString> = (0..model.row_count())
-                    .map(|i| model.row_data(i).unwrap())
-                    .collect();
-                items.push(text.trim().into());
-                ui.set_doit_items(ModelRc::from(items.as_slice()));
-                
-                // JSON 파일에 저장
+            let model = ui.get_doit_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            let text_clone = text.clone();
+            let should_save = !text_clone.trim().is_empty();
+            items.push(text.into());
+            ui.set_doit_items(ModelRc::from(items.as_slice()));
+            
+            // 빈 문자열이 아닐 때만 JSON 파일에 저장
+            if should_save {
                 save_ui_to_json(&ui);
             }
         }
@@ -305,15 +266,17 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui_weak = ui.as_weak();
     ui.on_add_plan_item(move |text| {
         if let Some(ui) = ui_weak.upgrade() {
-            if !text.trim().is_empty() {
-                let model = ui.get_plan_items();
-                let mut items: Vec<slint::SharedString> = (0..model.row_count())
-                    .map(|i| model.row_data(i).unwrap())
-                    .collect();
-                items.push(text.trim().into());
-                ui.set_plan_items(ModelRc::from(items.as_slice()));
-                
-                // JSON 파일에 저장
+            let model = ui.get_plan_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            let text_clone = text.clone();
+            let should_save = !text_clone.trim().is_empty();
+            items.push(text.into());
+            ui.set_plan_items(ModelRc::from(items.as_slice()));
+            
+            // 빈 문자열이 아닐 때만 JSON 파일에 저장
+            if should_save {
                 save_ui_to_json(&ui);
             }
         }
@@ -322,15 +285,17 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui_weak = ui.as_weak();
     ui.on_add_delegate_item(move |text| {
         if let Some(ui) = ui_weak.upgrade() {
-            if !text.trim().is_empty() {
-                let model = ui.get_delegate_items();
-                let mut items: Vec<slint::SharedString> = (0..model.row_count())
-                    .map(|i| model.row_data(i).unwrap())
-                    .collect();
-                items.push(text.trim().into());
-                ui.set_delegate_items(ModelRc::from(items.as_slice()));
-                
-                // JSON 파일에 저장
+            let model = ui.get_delegate_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            let text_clone = text.clone();
+            let should_save = !text_clone.trim().is_empty();
+            items.push(text.into());
+            ui.set_delegate_items(ModelRc::from(items.as_slice()));
+            
+            // 빈 문자열이 아닐 때만 JSON 파일에 저장
+            if should_save {
                 save_ui_to_json(&ui);
             }
         }
@@ -339,15 +304,78 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui_weak = ui.as_weak();
     ui.on_add_delete_item(move |text| {
         if let Some(ui) = ui_weak.upgrade() {
-            if !text.trim().is_empty() {
-                let model = ui.get_delete_items();
-                let mut items: Vec<slint::SharedString> = (0..model.row_count())
-                    .map(|i| model.row_data(i).unwrap())
-                    .collect();
-                items.push(text.trim().into());
+            let model = ui.get_delete_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            let text_clone = text.clone();
+            let should_save = !text_clone.trim().is_empty();
+            items.push(text.into());
+            ui.set_delete_items(ModelRc::from(items.as_slice()));
+            
+            // 빈 문자열이 아닐 때만 JSON 파일에 저장
+            if should_save {
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    // 아이템 수정 콜백 처리
+    let ui_weak = ui.as_weak();
+    ui.on_update_doit_item(move |index, text| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let model = ui.get_doit_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            if (index as usize) < items.len() && !text.trim().is_empty() {
+                items[index as usize] = text.trim().into();
+                ui.set_doit_items(ModelRc::from(items.as_slice()));
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    let ui_weak = ui.as_weak();
+    ui.on_update_plan_item(move |index, text| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let model = ui.get_plan_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            if (index as usize) < items.len() && !text.trim().is_empty() {
+                items[index as usize] = text.trim().into();
+                ui.set_plan_items(ModelRc::from(items.as_slice()));
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    let ui_weak = ui.as_weak();
+    ui.on_update_delegate_item(move |index, text| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let model = ui.get_delegate_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            if (index as usize) < items.len() && !text.trim().is_empty() {
+                items[index as usize] = text.trim().into();
+                ui.set_delegate_items(ModelRc::from(items.as_slice()));
+                save_ui_to_json(&ui);
+            }
+        }
+    });
+    
+    let ui_weak = ui.as_weak();
+    ui.on_update_delete_item(move |index, text| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let model = ui.get_delete_items();
+            let mut items: Vec<slint::SharedString> = (0..model.row_count())
+                .map(|i| model.row_data(i).unwrap())
+                .collect();
+            if (index as usize) < items.len() && !text.trim().is_empty() {
+                items[index as usize] = text.trim().into();
                 ui.set_delete_items(ModelRc::from(items.as_slice()));
-                
-                // JSON 파일에 저장
                 save_ui_to_json(&ui);
             }
         }
