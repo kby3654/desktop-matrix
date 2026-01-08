@@ -1,6 +1,7 @@
 import {
     VerticalBox,
     HorizontalBox,
+    ScrollView,
 } from "std-widgets.slint";
 import { GridItem } from "./grid_item.slint";
 import { BtnPlus } from "./btn_plus.slint";
@@ -22,14 +23,15 @@ export component MatrixGrid inherits Rectangle {
     border-width: 2px;
     border-color: #000;
     width: root.grid-width;
-    min-height: root.grid-height;
+    height: root.grid-height;
     
     VerticalBox {
         padding: 15px;
         alignment: start;
         
-        HorizontalBox {
+        header_box := HorizontalBox {
             alignment: space-between;
+            vertical-stretch: 0;
             Text {
                 text: root.title;
                 font-size: 20px;
@@ -45,16 +47,22 @@ export component MatrixGrid inherits Rectangle {
             }
         }
         
-        for item[index] in root.items: GridItem {
-            item-text: item;
-            item-index: index;
-            item-checked: index < root.checked-states.length ? root.checked-states[index] : false;
-            text-color: root.text-color;
-            item-updated(idx, new-text) => {
-                root.update-item(idx, new-text);
-            }
-            checked-toggled(idx) => {
-                root.toggle-checked(idx);
+        ScrollView {
+            height: root.grid-height - 30px - 50px;
+            VerticalBox {
+                spacing: 4px;
+                for item[index] in root.items: GridItem {
+                    item-text: item;
+                    item-index: index;
+                    item-checked: index < root.checked-states.length ? root.checked-states[index] : false;
+                    text-color: root.text-color;
+                    item-updated(idx, new-text) => {
+                        root.update-item(idx, new-text);
+                    }
+                    checked-toggled(idx) => {
+                        root.toggle-checked(idx);
+                    }
+                }
             }
         }
     }
