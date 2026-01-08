@@ -2,8 +2,7 @@ import {
     VerticalBox,
     HorizontalBox,
 } from "std-widgets.slint";
-import { GridItem } from "./components/grid_item.slint";
-import { BtnPlus } from "./components/btn_plus.slint";
+import { MatrixGrid } from "./components/matrix_grid.slint";
 
 export component AppWindow inherits Window {
     callback close_clicked();
@@ -73,178 +72,90 @@ export component AppWindow inherits Window {
             spacing: 0;
             
             // --- Q1: DO IT ---
-            Rectangle {
+            doit_grid := MatrixGrid {
                 row: 0;
                 col: 0;
-                width: root.app_width / 2 * 1px;
-                background: #FFB3B3;
-                border-width: 2px;
-                border-color: #000;
-                min-height: (root.app_height - 100) / 2 * 1px;
-                VerticalBox {
-                    padding: 15px;
-                    alignment: start;
-                    HorizontalBox {
-                        alignment: space-between;
-                        Text {
-                            text: "중요하고 긴급한 일";
-                            font-size: 20px;
-                            font-weight: 900;
-                            color: #000;
-                        }
-                        
-                        // 버튼
-                        doit_btn := BtnPlus {
-                            theme-color: #000;
-                            clicked => {
-                                root.add_doit_item("");
-                            }
-                        }
-                    }
-
-                    for item[index] in root.doit_items: GridItem {
-                        item-text: item;
-                        item-index: index;
-                        item-checked: index < root.doit_checked.length ? root.doit_checked[index] : false;
-                        text-color: #000;
-                        item-updated(idx, new-text) => {
-                            root.update_doit_item(idx, new-text);
-                        }
-                        checked-toggled(idx) => {
-                            root.toggle_doit_checked(idx);
-                        }
-                    }
+                title: "중요하고 긴급한 일";
+                background-color: #FFB3B3;
+                text-color: #000;
+                items: root.doit_items;
+                checked-states: root.doit_checked;
+                grid-width: root.app_width / 2 * 1px;
+                grid-height: (root.app_height - 100) / 2 * 1px;
+                add-item => {
+                    root.add_doit_item("");
+                }
+                update-item(idx, new-text) => {
+                    root.update_doit_item(idx, new-text);
+                }
+                toggle-checked(idx) => {
+                    root.toggle_doit_checked(idx);
                 }
             }
 
             // --- Q2: PLAN ---
-            Rectangle {
+            plan_grid := MatrixGrid {
                 row: 0;
                 col: 1;
-                width: root.app_width / 2 * 1px;
-                background: #B5E4CA;
-                border-width: 2px;
-                border-color: #000;
-                min-height: (root.app_height - 100) / 2 * 1px;
-                VerticalBox {
-                    padding: 15px;
-                    alignment: start;
-                    HorizontalBox {
-                        alignment: space-between;
-                        Text {
-                            text: "중요하지만 긴급하지 않은 일";
-                            font-size: 20px;
-                            font-weight: 900;
-                            color: #000;
-                        }
-
-                        plan_btn := BtnPlus {
-                            theme-color: #000;
-                            clicked => {
-                                root.add_plan_item("");
-                            }
-                        }
-                    }
-
-                    for item[index] in root.plan_items: GridItem {
-                        item-text: item;
-                        item-index: index;
-                        item-checked: index < root.plan_checked.length ? root.plan_checked[index] : false;
-                        text-color: #000;
-                        item-updated(idx, new-text) => {
-                            root.update_plan_item(idx, new-text);
-                        }
-                        checked-toggled(idx) => {
-                            root.toggle_plan_checked(idx);
-                        }
-                    }
+                title: "중요하지만 긴급하지 않은 일";
+                background-color: #B5E4CA;
+                text-color: #000;
+                items: root.plan_items;
+                checked-states: root.plan_checked;
+                grid-width: root.app_width / 2 * 1px;
+                grid-height: (root.app_height - 100) / 2 * 1px;
+                add-item => {
+                    root.add_plan_item("");
+                }
+                update-item(idx, new-text) => {
+                    root.update_plan_item(idx, new-text);
+                }
+                toggle-checked(idx) => {
+                    root.toggle_plan_checked(idx);
                 }
             }
 
             // --- Q3: DELEGATE ---
-            Rectangle {
+            delegate_grid := MatrixGrid {
                 row: 1;
                 col: 0;
-                width: root.app_width / 2 * 1px;
-                background: #FFEBB3;
-                border-width: 2px;
-                border-color: #000;
-                min-height: (root.app_height - 100) / 2 * 1px;
-                VerticalBox {
-                    padding: 15px;
-                    alignment: start;
-                    HorizontalBox {
-                        alignment: space-between;
-                        Text {
-                            text: "긴급하지만 중요하지 않은 일";
-                            font-size: 20px;
-                            font-weight: 900;
-                            color: #000;
-                        }
-
-                        delegate_btn := BtnPlus {
-                            theme-color: #000;
-                            clicked => {
-                                root.add_delegate_item("");
-                            }
-                        }
-                    }
-
-                    for item[index] in root.delegate_items: GridItem {
-                        item-text: item;
-                        item-index: index;
-                        item-checked: index < root.delegate_checked.length ? root.delegate_checked[index] : false;
-                        text-color: #000;
-                        item-updated(idx, new-text) => {
-                            root.update_delegate_item(idx, new-text);
-                        }
-                        checked-toggled(idx) => {
-                            root.toggle_delegate_checked(idx);
-                        }
-                    }
+                title: "긴급하지만 중요하지 않은 일";
+                background-color: #FFEBB3;
+                text-color: #000;
+                items: root.delegate_items;
+                checked-states: root.delegate_checked;
+                grid-width: root.app_width / 2 * 1px;
+                grid-height: (root.app_height - 100) / 2 * 1px;
+                add-item => {
+                    root.add_delegate_item("");
+                }
+                update-item(idx, new-text) => {
+                    root.update_delegate_item(idx, new-text);
+                }
+                toggle-checked(idx) => {
+                    root.toggle_delegate_checked(idx);
                 }
             }
 
             // --- Q4: DELETE ---
-            Rectangle {
+            delete_grid := MatrixGrid {
                 row: 1;
                 col: 1;
-                width: root.app_width / 2 * 1px;
-                background: #F0F0F0;
-                border-width: 2px;
-                border-color: #000;
-                VerticalBox {
-                    padding: 15px;
-                    alignment: start;
-                    HorizontalBox {
-                        alignment: space-between;
-                        Text {
-                            text: "긴급하지 않고 중요하지 않은 일";
-                            font-size: 20px;
-                            font-weight: 900;
-                            color: #000;
-                        }
-
-                        delete_btn := BtnPlus {
-                            theme-color: #000;
-                            clicked => {
-                                root.add_delete_item("");
-                            }
-                        }
-                    }
-
-                    for item[index] in root.delete_items: GridItem {
-                        item-text: item;
-                        item-index: index;
-                        item-checked: index < root.delete_checked.length ? root.delete_checked[index] : false;
-                        text-color: #000;
-                        item-updated(idx, new-text) => {
-                            root.update_delete_item(idx, new-text);
-                        }
-                        checked-toggled(idx) => {
-                            root.toggle_delete_checked(idx);
-                        }
-                    }
+                title: "긴급하지 않고 중요하지 않은 일";
+                background-color: #F0F0F0;
+                text-color: #000;
+                items: root.delete_items;
+                checked-states: root.delete_checked;
+                grid-width: root.app_width / 2 * 1px;
+                grid-height: (root.app_height - 100) / 2 * 1px;
+                add-item => {
+                    root.add_delete_item("");
+                }
+                update-item(idx, new-text) => {
+                    root.update_delete_item(idx, new-text);
+                }
+                toggle-checked(idx) => {
+                    root.toggle_delete_checked(idx);
                 }
             }
         }

@@ -1,0 +1,61 @@
+import {
+    VerticalBox,
+    HorizontalBox,
+} from "std-widgets.slint";
+import { GridItem } from "./grid_item.slint";
+import { BtnPlus } from "./btn_plus.slint";
+
+// 매트릭스 그리드 컴포넌트 (각 사분면)
+export component MatrixGrid inherits Rectangle {
+    callback add-item();
+    callback update-item(int, string);
+    callback toggle-checked(int);
+    in property <string> title: "";
+    in property <color> background-color: #FFFFFF;
+    in property <color> text-color: #000;
+    in property <[string]> items: [];
+    in property <[bool]> checked-states: [];
+    in property <length> grid-width: 400px;
+    in property <length> grid-height: 375px;
+    
+    background: root.background-color;
+    border-width: 2px;
+    border-color: #000;
+    width: root.grid-width;
+    min-height: root.grid-height;
+    
+    VerticalBox {
+        padding: 15px;
+        alignment: start;
+        
+        HorizontalBox {
+            alignment: space-between;
+            Text {
+                text: root.title;
+                font-size: 20px;
+                font-weight: 900;
+                color: root.text-color;
+            }
+            
+            add-btn := BtnPlus {
+                theme-color: root.text-color;
+                clicked => {
+                    root.add-item();
+                }
+            }
+        }
+        
+        for item[index] in root.items: GridItem {
+            item-text: item;
+            item-index: index;
+            item-checked: index < root.checked-states.length ? root.checked-states[index] : false;
+            text-color: root.text-color;
+            item-updated(idx, new-text) => {
+                root.update-item(idx, new-text);
+            }
+            checked-toggled(idx) => {
+                root.toggle-checked(idx);
+            }
+        }
+    }
+}
