@@ -11,6 +11,7 @@ export component MatrixGrid inherits Rectangle {
     callback add-item();
     callback update-item(int, string);
     callback toggle-checked(int);
+    callback remove-item(int);
     in property <string> title: "";
     in property <color> background-color: #FFFFFF;
     in property <color> text-color: #000;
@@ -61,6 +62,9 @@ export component MatrixGrid inherits Rectangle {
                     }
                     checked-toggled(idx) => {
                         root.toggle-checked(idx);
+                    }
+                    item-removed(idx) => {
+                        root.remove-item(idx);
                     }
                 }
             }

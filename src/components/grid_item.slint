@@ -8,6 +8,7 @@ import {
 export component GridItem inherits HorizontalBox {
     callback item-updated(int, string); // 인덱스, 새 텍스트
     callback checked-toggled(int); // 인덱스
+    callback item-removed(int); // 인덱스
     in property <string> item-text: "";
     in property <int> item-index: 0;
     in property <bool> item-checked: false;
@@ -63,6 +64,28 @@ export component GridItem inherits HorizontalBox {
             height: 2px;
             y: 15px;
             background: root.text-color;
+        }
+    }
+    
+    remove-btn := Rectangle {
+        width: 32px;
+        height: 32px;
+        vertical-stretch: 0;
+        border-radius: 4px;
+        background: remove_touch.pressed ? rgba(0, 0, 0, 0.2) : remove_touch.has-hover ? rgba(0, 0, 0, 0.1) : transparent;
+        border-width: 1px;
+        border-color: remove_touch.has-hover ? root.text-color : transparent;
+        Text {
+            text: "×";
+            color: remove_touch.has-hover ? #ff5555 : root.text-color;
+            font-size: 20px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+        remove_touch := TouchArea {
+            clicked => {
+                root.item-removed(root.item-index);
+            }
         }
     }
 }

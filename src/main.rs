@@ -3,7 +3,7 @@ slint::include_modules!();
 mod features;
 
 use features::storage::{load_from_json, load_data_to_ui};
-use features::callbacks::{setup_add_item_callbacks, setup_toggle_callbacks, setup_update_callbacks};
+use features::callbacks::{setup_add_item_callbacks, setup_toggle_callbacks, setup_update_callbacks, setup_remove_callbacks};
 use features::tray::{setup_tray, setup_tray_event_handler};
 use features::window::setup_window_size_and_position;
 
@@ -35,6 +35,7 @@ fn main() -> Result<(), slint::PlatformError> {
     setup_add_item_callbacks(&ui);
     setup_toggle_callbacks(&ui);
     setup_update_callbacks(&ui);
+    setup_remove_callbacks(&ui);
 
     ui.run()
 }

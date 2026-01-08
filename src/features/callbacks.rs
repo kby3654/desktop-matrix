@@ -250,3 +250,104 @@ fn update_item<F1, F2>(
         save_ui_to_json(ui);
     }
 }
+
+pub fn setup_remove_callbacks(ui: &AppWindow) {
+    // Do It 항목 제거
+    let ui_weak = ui.as_weak();
+    ui.on_remove_doit_item(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            remove_item(
+                &ui,
+                |ui| ui.get_doit_items(),
+                |ui| ui.get_doit_checked(),
+                |ui, items, checked| {
+                    ui.set_doit_items(ModelRc::from(items.as_slice()));
+                    ui.set_doit_checked(ModelRc::from(checked.as_slice()));
+                },
+                index,
+            );
+        }
+    });
+
+    // Plan 항목 제거
+    let ui_weak = ui.as_weak();
+    ui.on_remove_plan_item(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            remove_item(
+                &ui,
+                |ui| ui.get_plan_items(),
+                |ui| ui.get_plan_checked(),
+                |ui, items, checked| {
+                    ui.set_plan_items(ModelRc::from(items.as_slice()));
+                    ui.set_plan_checked(ModelRc::from(checked.as_slice()));
+                },
+                index,
+            );
+        }
+    });
+
+    // Delegate 항목 제거
+    let ui_weak = ui.as_weak();
+    ui.on_remove_delegate_item(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            remove_item(
+                &ui,
+                |ui| ui.get_delegate_items(),
+                |ui| ui.get_delegate_checked(),
+                |ui, items, checked| {
+                    ui.set_delegate_items(ModelRc::from(items.as_slice()));
+                    ui.set_delegate_checked(ModelRc::from(checked.as_slice()));
+                },
+                index,
+            );
+        }
+    });
+
+    // Delete 항목 제거
+    let ui_weak = ui.as_weak();
+    ui.on_remove_delete_item(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            remove_item(
+                &ui,
+                |ui| ui.get_delete_items(),
+                |ui| ui.get_delete_checked(),
+                |ui, items, checked| {
+                    ui.set_delete_items(ModelRc::from(items.as_slice()));
+                    ui.set_delete_checked(ModelRc::from(checked.as_slice()));
+                },
+                index,
+            );
+        }
+    });
+}
+
+fn remove_item<F1, F2, F3>(
+    ui: &AppWindow,
+    get_items: F1,
+    get_checked: F2,
+    set_items: F3,
+    index: i32,
+) where
+    F1: Fn(&AppWindow) -> ModelRc<SharedString>,
+    F2: Fn(&AppWindow) -> ModelRc<bool>,
+    F3: Fn(&AppWindow, &Vec<SharedString>, &Vec<bool>),
+{
+    let model = get_items(ui);
+    let mut items: Vec<SharedString> = (0..model.row_count())
+        .map(|i| model.row_data(i).unwrap())
+        .collect();
+    let checked_model = get_checked(ui);
+    let mut checked: Vec<bool> = (0..checked_model.row_count())
+        .map(|i| checked_model.row_data(i).unwrap_or(false))
+        .collect();
+    
+    let idx = index as usize;
+    if idx < items.len() {
+        items.remove(idx);
+        if idx < checked.len() {
+            checked.remove(idx);
+        }
+        set_items(ui, &items, &checked);
+        save_ui_to_json(ui);
+    }
+}
