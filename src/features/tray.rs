@@ -32,7 +32,7 @@ pub fn setup_tray() -> (tray_icon::TrayIcon, tray_icon::menu::MenuId) {
     (tray_icon, quit_item_id)
 }
 
-pub fn setup_tray_event_handler(quit_item_id: tray_icon::menu::MenuId) {
+pub fn setup_tray_event_handler(quit_item_id: tray_icon::menu::MenuId) -> slint::Timer {
     // 트레이 이벤트 리시버
     let menu_channel = MenuEvent::receiver();
 
@@ -51,4 +51,5 @@ pub fn setup_tray_event_handler(quit_item_id: tray_icon::menu::MenuId) {
             }
         },
     );
+    tray_timer
 }

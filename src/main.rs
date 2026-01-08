@@ -21,7 +21,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     // 트레이 아이콘 설정
     let (_tray_icon, quit_item_id) = setup_tray();
-    setup_tray_event_handler(quit_item_id);
+    let _tray_timer = setup_tray_event_handler(quit_item_id);
 
     // 윈도우 크기 및 위치 설정
     setup_window_size_and_position(&ui.as_weak());
