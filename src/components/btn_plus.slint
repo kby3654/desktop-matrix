@@ -1,0 +1,26 @@
+// 플러스 버튼 컴포넌트
+export component BtnPlus inherits Rectangle {
+    callback clicked;
+    in property <color> theme-color: #000;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: touch.pressed ? rgba(0, 0, 0, 0.2) : touch.has-hover ? rgba(0, 0, 0, 0.1) : transparent;
+    border-width: 1px;
+    border-color: touch.has-hover ? root.theme-color : transparent;
+    Path {
+        width: 16px;
+        height: 16px;
+        stroke: root.theme-color;
+        stroke-width: 3px;
+        viewbox-width: 100;
+        viewbox-height: 100;
+        commands: "M 50 0 L 50 100 M 0 50 L 100 50";
+    }
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+}

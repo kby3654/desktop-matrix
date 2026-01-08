@@ -1,0 +1,68 @@
+import {
+    HorizontalBox,
+    LineEdit,
+    CheckBox,
+} from "std-widgets.slint";
+
+// 그리드 아이템 컴포넌트 (체크박스 + 텍스트, 더블클릭 수정)
+export component GridItem inherits HorizontalBox {
+    callback item-updated(int, string); // 인덱스, 새 텍스트
+    callback checked-toggled(int); // 인덱스
+    in property <string> item-text: "";
+    in property <int> item-index: 0;
+    in property <bool> item-checked: false;
+    in property <color> text-color: #000;
+    spacing: 8px;
+    alignment: start;
+    
+    in-out property <bool> is-editing: root.item-text == "";
+    
+    checkbox := CheckBox {
+        checked: root.item-checked;
+        toggled => {
+            root.checked-toggled(root.item-index);
+        }
+    }
+    
+    if root.is-editing: edit_field := LineEdit {
+        text: root.item-text;
+        font-size: 18px;
+        min-height: 32px;
+        min-width: 200px;
+        width: 30%;
+        vertical-stretch: 0;
+        accepted => {
+            if self.text != "" {
+                root.item-updated(root.item-index, self.text);
+                root.is-editing = false;
+            }
+        }
+    }
+    
+    if !root.is-editing: text_area := Rectangle {
+        height: 32px;
+        vertical-stretch: 0;
+        background: transparent;
+        text_touch := TouchArea {
+            double-clicked => {
+                root.is-editing = true;
+            }
+            Text {
+                text: root.item-text;
+                color: root.text-color;
+                font-size: 18px;
+                // font-weight: 400;
+                overflow: elide;
+                vertical-alignment: center;
+                horizontal-alignment: left;
+                width: 100%;
+            }
+        }
+        if root.item-checked: strikethrough_line := Rectangle {
+            width: 100%;
+            height: 2px;
+            y: 15px;
+            background: root.text-color;
+        }
+    }
+}
