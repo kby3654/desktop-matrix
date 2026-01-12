@@ -12,6 +12,9 @@ pub struct EisenhowerItem {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_dt: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub update_dt: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,50 +37,54 @@ pub fn get_json_path() -> std::path::PathBuf {
 }
 
 pub fn save_to_json(
-    doit_items: &[(bool, slint::SharedString, Option<String>)],
-    plan_items: &[(bool, slint::SharedString, Option<String>)],
-    delegate_items: &[(bool, slint::SharedString, Option<String>)],
-    delete_items: &[(bool, slint::SharedString, Option<String>)],
+    doit_items: &[(bool, slint::SharedString, Option<String>, Option<String>)],
+    plan_items: &[(bool, slint::SharedString, Option<String>, Option<String>)],
+    delegate_items: &[(bool, slint::SharedString, Option<String>, Option<String>)],
+    delete_items: &[(bool, slint::SharedString, Option<String>, Option<String>)],
 ) {
     let data = EisenhowerData {
         doit_items: doit_items
             .iter()
             .enumerate()
-            .map(|(idx, (checked, text, created_dt))| EisenhowerItem {
+            .map(|(idx, (checked, text, created_dt, update_dt))| EisenhowerItem {
                 checked: *checked,
                 text: text.to_string(),
                 index: idx,
                 created_dt: created_dt.clone(),
+                update_dt: update_dt.clone(),
             })
             .collect(),
         plan_items: plan_items
             .iter()
             .enumerate()
-            .map(|(idx, (checked, text, created_dt))| EisenhowerItem {
+            .map(|(idx, (checked, text, created_dt, update_dt))| EisenhowerItem {
                 checked: *checked,
                 text: text.to_string(),
                 index: idx,
                 created_dt: created_dt.clone(),
+                update_dt: update_dt.clone(),
             })
             .collect(),
         delegate_items: delegate_items
             .iter()
             .enumerate()
-            .map(|(idx, (checked, text, created_dt))| EisenhowerItem {
+            .map(|(idx, (checked, text, created_dt, update_dt))| EisenhowerItem {
                 checked: *checked,
                 text: text.to_string(),
                 index: idx,
                 created_dt: created_dt.clone(),
+                update_dt: update_dt.clone(),
             })
             .collect(),
         delete_items: delete_items
             .iter()
             .enumerate()
-            .map(|(idx, (checked, text, created_dt))| EisenhowerItem {
+            .map(|(idx, (checked, text, created_dt, update_dt))| EisenhowerItem {
                 checked: *checked,
                 text: text.to_string(),
                 index: idx,
                 created_dt: created_dt.clone(),
+                update_dt: update_dt.clone(),
             })
             .collect(),
     };
@@ -127,6 +134,7 @@ pub fn load_from_json() -> Option<EisenhowerData> {
                             text,
                             index: idx,
                             created_dt: None,
+                            update_dt: None,
                         })
                         .collect(),
                     plan_items: plan_items
@@ -137,6 +145,7 @@ pub fn load_from_json() -> Option<EisenhowerData> {
                             text,
                             index: idx,
                             created_dt: None,
+                            update_dt: None,
                         })
                         .collect(),
                     delegate_items: delegate_items
@@ -147,6 +156,7 @@ pub fn load_from_json() -> Option<EisenhowerData> {
                             text,
                             index: idx,
                             created_dt: None,
+                            update_dt: None,
                         })
                         .collect(),
                     delete_items: delete_items
@@ -157,6 +167,7 @@ pub fn load_from_json() -> Option<EisenhowerData> {
                             text,
                             index: idx,
                             created_dt: None,
+                            update_dt: None,
                         })
                         .collect(),
                 })
@@ -200,76 +211,169 @@ pub fn save_ui_to_json(ui: &AppWindow) {
         Utc::now().to_rfc3339()
     }
     
-    // 텍스트로 기존 아이템 찾기
-    fn find_existing_created_dt(
+    // 인덱스로 기존 아이템 찾기 (created_dt 유지용)
+    fn find_existing_item_by_index(
         existing_items: &[EisenhowerItem],
-        text: &str,
-    ) -> Option<Option<String>> {
-        existing_items
-            .iter()
-            .find(|item| item.text == text)
-            .map(|item| item.created_dt.clone())
+        index: usize,
+    ) -> Option<&EisenhowerItem> {
+        existing_items.iter().find(|item| item.index == index)
     }
     
-    // 체크 상태, 텍스트, createdDt를 함께 수집
-    let doit_items: Vec<(bool, slint::SharedString, Option<String>)> = 
+    // 텍스트로 기존 아이템 찾기 (created_dt 유지용)
+    fn find_existing_item_by_text<'a>(
+        existing_items: &'a [EisenhowerItem],
+        text: &str,
+    ) -> Option<&'a EisenhowerItem> {
+        existing_items.iter().find(|item| item.text == text)
+    }
+    
+    // 체크 상태, 텍스트, createdDt, updateDt를 함께 수집
+    let doit_items: Vec<(bool, slint::SharedString, Option<String>, Option<String>)> = 
         (0..ui.get_doit_items().row_count())
             .map(|i| {
                 let text = ui.get_doit_items().row_data(i).unwrap();
                 let checked = ui.get_doit_checked().row_data(i).unwrap_or(false);
-                let created_dt = existing_data
+                
+                // 같은 인덱스의 기존 아이템 찾기
+                let existing_item_by_index = existing_data
                     .as_ref()
-                    .and_then(|data| find_existing_created_dt(&data.doit_items, &text))
-                    .flatten()
+                    .and_then(|data| find_existing_item_by_index(&data.doit_items, i));
+                
+                // 텍스트로 기존 아이템 찾기 (created_dt 유지용)
+                let existing_item_by_text = existing_data
+                    .as_ref()
+                    .and_then(|data| find_existing_item_by_text(&data.doit_items, &text));
+                
+                let created_dt = existing_item_by_text
+                    .and_then(|item| item.created_dt.clone())
                     .or_else(|| Some(get_current_timestamp()));
-                (checked, text, created_dt)
+                
+                // 같은 인덱스의 아이템이 있고 텍스트가 변경되었으면 update_dt를 현재 시간으로 설정
+                let update_dt = if let Some(existing_item) = existing_item_by_index {
+                    if existing_item.text != text.to_string() {
+                        Some(get_current_timestamp())
+                    } else {
+                        existing_item.update_dt.clone()
+                    }
+                } else {
+                    // 새 아이템이거나 인덱스가 맞지 않는 경우, 텍스트로 찾은 아이템의 update_dt 사용
+                    existing_item_by_text.and_then(|item| item.update_dt.clone())
+                };
+                
+                (checked, text, created_dt, update_dt)
             })
-            .filter(|(_, text, _)| !text.trim().is_empty())
+            .filter(|(_, text, _, _): &(bool, slint::SharedString, Option<String>, Option<String>)| !text.as_str().trim().is_empty())
             .collect();
     
-    let plan_items: Vec<(bool, slint::SharedString, Option<String>)> = 
+    let plan_items: Vec<(bool, slint::SharedString, Option<String>, Option<String>)> = 
         (0..ui.get_plan_items().row_count())
             .map(|i| {
                 let text = ui.get_plan_items().row_data(i).unwrap();
                 let checked = ui.get_plan_checked().row_data(i).unwrap_or(false);
-                let created_dt = existing_data
+                
+                // 같은 인덱스의 기존 아이템 찾기
+                let existing_item_by_index = existing_data
                     .as_ref()
-                    .and_then(|data| find_existing_created_dt(&data.plan_items, &text))
-                    .flatten()
+                    .and_then(|data| find_existing_item_by_index(&data.plan_items, i));
+                
+                // 텍스트로 기존 아이템 찾기 (created_dt 유지용)
+                let existing_item_by_text = existing_data
+                    .as_ref()
+                    .and_then(|data| find_existing_item_by_text(&data.plan_items, &text));
+                
+                let created_dt = existing_item_by_text
+                    .and_then(|item| item.created_dt.clone())
                     .or_else(|| Some(get_current_timestamp()));
-                (checked, text, created_dt)
+                
+                // 같은 인덱스의 아이템이 있고 텍스트가 변경되었으면 update_dt를 현재 시간으로 설정
+                let update_dt = if let Some(existing_item) = existing_item_by_index {
+                    if existing_item.text != text.to_string() {
+                        Some(get_current_timestamp())
+                    } else {
+                        existing_item.update_dt.clone()
+                    }
+                } else {
+                    // 새 아이템이거나 인덱스가 맞지 않는 경우, 텍스트로 찾은 아이템의 update_dt 사용
+                    existing_item_by_text.and_then(|item| item.update_dt.clone())
+                };
+                
+                (checked, text, created_dt, update_dt)
             })
-            .filter(|(_, text, _)| !text.trim().is_empty())
+            .filter(|(_, text, _, _): &(bool, slint::SharedString, Option<String>, Option<String>)| !text.as_str().trim().is_empty())
             .collect();
     
-    let delegate_items: Vec<(bool, slint::SharedString, Option<String>)> =
+    let delegate_items: Vec<(bool, slint::SharedString, Option<String>, Option<String>)> =
         (0..ui.get_delegate_items().row_count())
             .map(|i| {
                 let text = ui.get_delegate_items().row_data(i).unwrap();
                 let checked = ui.get_delegate_checked().row_data(i).unwrap_or(false);
-                let created_dt = existing_data
+                
+                // 같은 인덱스의 기존 아이템 찾기
+                let existing_item_by_index = existing_data
                     .as_ref()
-                    .and_then(|data| find_existing_created_dt(&data.delegate_items, &text))
-                    .flatten()
+                    .and_then(|data| find_existing_item_by_index(&data.delegate_items, i));
+                
+                // 텍스트로 기존 아이템 찾기 (created_dt 유지용)
+                let existing_item_by_text = existing_data
+                    .as_ref()
+                    .and_then(|data| find_existing_item_by_text(&data.delegate_items, &text));
+                
+                let created_dt = existing_item_by_text
+                    .and_then(|item| item.created_dt.clone())
                     .or_else(|| Some(get_current_timestamp()));
-                (checked, text, created_dt)
+                
+                // 같은 인덱스의 아이템이 있고 텍스트가 변경되었으면 update_dt를 현재 시간으로 설정
+                let update_dt = if let Some(existing_item) = existing_item_by_index {
+                    if existing_item.text != text.to_string() {
+                        Some(get_current_timestamp())
+                    } else {
+                        existing_item.update_dt.clone()
+                    }
+                } else {
+                    // 새 아이템이거나 인덱스가 맞지 않는 경우, 텍스트로 찾은 아이템의 update_dt 사용
+                    existing_item_by_text.and_then(|item| item.update_dt.clone())
+                };
+                
+                (checked, text, created_dt, update_dt)
             })
-            .filter(|(_, text, _)| !text.trim().is_empty())
+            .filter(|(_, text, _, _): &(bool, slint::SharedString, Option<String>, Option<String>)| !text.as_str().trim().is_empty())
             .collect();
     
-    let delete_items: Vec<(bool, slint::SharedString, Option<String>)> = 
+    let delete_items: Vec<(bool, slint::SharedString, Option<String>, Option<String>)> = 
         (0..ui.get_delete_items().row_count())
             .map(|i| {
                 let text = ui.get_delete_items().row_data(i).unwrap();
                 let checked = ui.get_delete_checked().row_data(i).unwrap_or(false);
-                let created_dt = existing_data
+                
+                // 같은 인덱스의 기존 아이템 찾기
+                let existing_item_by_index = existing_data
                     .as_ref()
-                    .and_then(|data| find_existing_created_dt(&data.delete_items, &text))
-                    .flatten()
+                    .and_then(|data| find_existing_item_by_index(&data.delete_items, i));
+                
+                // 텍스트로 기존 아이템 찾기 (created_dt 유지용)
+                let existing_item_by_text = existing_data
+                    .as_ref()
+                    .and_then(|data| find_existing_item_by_text(&data.delete_items, &text));
+                
+                let created_dt = existing_item_by_text
+                    .and_then(|item| item.created_dt.clone())
                     .or_else(|| Some(get_current_timestamp()));
-                (checked, text, created_dt)
+                
+                // 같은 인덱스의 아이템이 있고 텍스트가 변경되었으면 update_dt를 현재 시간으로 설정
+                let update_dt = if let Some(existing_item) = existing_item_by_index {
+                    if existing_item.text != text.to_string() {
+                        Some(get_current_timestamp())
+                    } else {
+                        existing_item.update_dt.clone()
+                    }
+                } else {
+                    // 새 아이템이거나 인덱스가 맞지 않는 경우, 텍스트로 찾은 아이템의 update_dt 사용
+                    existing_item_by_text.and_then(|item| item.update_dt.clone())
+                };
+                
+                (checked, text, created_dt, update_dt)
             })
-            .filter(|(_, text, _)| !text.trim().is_empty())
+            .filter(|(_, text, _, _): &(bool, slint::SharedString, Option<String>, Option<String>)| !text.as_str().trim().is_empty())
             .collect();
     
     save_to_json(&doit_items, &plan_items, &delegate_items, &delete_items);
@@ -278,19 +382,19 @@ pub fn save_ui_to_json(ui: &AppWindow) {
     use slint::ModelRc;
     let doit_created_dt: Vec<slint::SharedString> = doit_items
         .iter()
-        .map(|(_, _, dt)| format_created_dt(dt).into())
+        .map(|(_, _, dt, _)| format_created_dt(dt).into())
         .collect();
     let plan_created_dt: Vec<slint::SharedString> = plan_items
         .iter()
-        .map(|(_, _, dt)| format_created_dt(dt).into())
+        .map(|(_, _, dt, _)| format_created_dt(dt).into())
         .collect();
     let delegate_created_dt: Vec<slint::SharedString> = delegate_items
         .iter()
-        .map(|(_, _, dt)| format_created_dt(dt).into())
+        .map(|(_, _, dt, _)| format_created_dt(dt).into())
         .collect();
     let delete_created_dt: Vec<slint::SharedString> = delete_items
         .iter()
-        .map(|(_, _, dt)| format_created_dt(dt).into())
+        .map(|(_, _, dt, _)| format_created_dt(dt).into())
         .collect();
     
     ui.set_doit_created_dt(ModelRc::from(doit_created_dt.as_slice()));
