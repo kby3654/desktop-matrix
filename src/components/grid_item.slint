@@ -13,6 +13,7 @@ export component GridItem inherits HorizontalBox {
     in property <int> item-index: 0;
     in property <bool> item-checked: false;
     in property <color> text-color: #000;
+    in property <string> created-dt: "";
     spacing: 8px;
     alignment: start;
     
@@ -66,6 +67,17 @@ export component GridItem inherits HorizontalBox {
             background: root.text-color;
         }
     }
+    
+    // if !root.is-editing && root.created-dt != "": date_text := Text {
+    //     text: root.created-dt;
+    //     color: root.text-color;
+    //     font-size: 12px;
+    //     height: 32px;
+    //     opacity: 0.6;
+    //     vertical-alignment: center;
+    //     min-width: 100px;
+    //     horizontal-alignment: left;
+    // }
     
     remove-btn := Rectangle {
         width: 32px;

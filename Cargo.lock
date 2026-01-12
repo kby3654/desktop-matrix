@@ -822,6 +822,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link 0.2.1",
 ]
@@ -5313,6 +5314,7 @@ dependencies = [
 name = "wallpaper-metrics"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "image",
  "raw-window-handle",
  "serde",

@@ -17,6 +17,7 @@ export component MatrixGrid inherits Rectangle {
     in property <color> text-color: #000;
     in property <[string]> items: [];
     in property <[bool]> checked-states: [];
+    in property <[string]> created-dt: [];
     in property <length> grid-width: 400px;
     in property <length> grid-height: 375px;
     
@@ -56,6 +57,7 @@ export component MatrixGrid inherits Rectangle {
                     item-text: item;
                     item-index: index;
                     item-checked: index < root.checked-states.length ? root.checked-states[index] : false;
+                    created-dt: index < root.created-dt.length ? root.created-dt[index] : "";
                     text-color: root.text-color;
                     item-updated(idx, new-text) => {
                         root.update-item(idx, new-text);

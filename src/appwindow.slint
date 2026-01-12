@@ -32,6 +32,10 @@ export component AppWindow inherits Window {
     in-out property <[bool]> plan_checked: [];
     in-out property <[bool]> delegate_checked: [];
     in-out property <[bool]> delete_checked: [];
+    in-out property <[string]> doit_created_dt: [];
+    in-out property <[string]> plan_created_dt: [];
+    in-out property <[string]> delegate_created_dt: [];
+    in-out property <[string]> delete_created_dt: [];
     no-frame: true;
     background: transparent;
     width: app_width * 1px;
@@ -84,6 +88,7 @@ export component AppWindow inherits Window {
                 text-color: #000;
                 items: root.doit_items;
                 checked-states: root.doit_checked;
+                created-dt: root.doit_created_dt;
                 grid-width: root.app_width / 2 * 1px;
                 grid-height: (root.app_height - 100) / 2 * 1px;
                 add-item => {
@@ -109,6 +114,7 @@ export component AppWindow inherits Window {
                 text-color: #000;
                 items: root.plan_items;
                 checked-states: root.plan_checked;
+                created-dt: root.plan_created_dt;
                 grid-width: root.app_width / 2 * 1px;
                 grid-height: (root.app_height - 100) / 2 * 1px;
                 add-item => {
@@ -134,6 +140,7 @@ export component AppWindow inherits Window {
                 text-color: #000;
                 items: root.delegate_items;
                 checked-states: root.delegate_checked;
+                created-dt: root.delegate_created_dt;
                 grid-width: root.app_width / 2 * 1px;
                 grid-height: (root.app_height - 100) / 2 * 1px;
                 add-item => {
@@ -159,6 +166,7 @@ export component AppWindow inherits Window {
                 text-color: #000;
                 items: root.delete_items;
                 checked-states: root.delete_checked;
+                created-dt: root.delete_created_dt;
                 grid-width: root.app_width / 2 * 1px;
                 grid-height: (root.app_height - 100) / 2 * 1px;
                 add-item => {
