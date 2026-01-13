@@ -33,6 +33,7 @@ export component MatrixGrid inherits Rectangle {
         
         header_box := HorizontalBox {
             alignment: space-between;
+            padding: 0;
             vertical-stretch: 0;
             Text {
                 text: root.title;
@@ -50,7 +51,7 @@ export component MatrixGrid inherits Rectangle {
         }
         
         ScrollView {
-            height: root.grid-height - 30px - 50px;
+            height: root.grid-height - 30px - 40px;
             VerticalBox {
                 spacing: 4px;
                 for item[index] in root.items: GridItem {
